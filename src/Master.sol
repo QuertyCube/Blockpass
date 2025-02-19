@@ -71,7 +71,7 @@ contract MasterContract {
         require(params.start < params.end, "Invalid event timing");
         require(params.startSale < params.endSale, "Invalid sale timing");
         require(params.ticketInfos.length > 0, "Invalid ticket data");
-        
+
         EventContract.Ticket[] memory tickets = new EventContract.Ticket[](params.ticketInfos.length);
         for (uint256 i = 0; i < params.ticketInfos.length; i++) {
             tickets[i] = EventContract.Ticket({
@@ -100,7 +100,7 @@ contract MasterContract {
         emit EventCreated(address(newEvent));
         return address(newEvent);
     }
-    
+
     function getAllEvents() external view returns (address[] memory) {
         return eventContracts;
     }
@@ -115,7 +115,6 @@ contract MasterContract {
         emit FundsWithdrawn(owner, amount);
     }
 }
-
 
 /*
 

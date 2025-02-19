@@ -20,7 +20,4 @@ contract MasterTest is Test {
     function testCreate() public {
         // assertEq(master.owner(), owner);
     }
-
-
-
 }

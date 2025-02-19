@@ -15,7 +15,7 @@ contract EventContract is ERC721Enumerable, Pausable {
     uint256 public eventTiketStartSale;
     uint256 public eventTiketEndSale;
     bool public isCancelled = false;
-    
+
     IERC20 public usdcToken;
 
     struct Ticket {
@@ -55,7 +55,7 @@ contract EventContract is ERC721Enumerable, Pausable {
     }
 
     constructor(
-        address _vendor, 
+        address _vendor,
         address _masterOwner,
         address _usdcToken,
         address _treasuryContract,
@@ -85,7 +85,9 @@ contract EventContract is ERC721Enumerable, Pausable {
 
     function mintTicket(string memory _ticketType) external whenNotPaused {
         require(!isCancelled, "Event is cancelled");
-        require(block.timestamp >= eventTiketStartSale && block.timestamp <= eventTiketEndSale, "Ticket sale not active");
+        require(
+            block.timestamp >= eventTiketStartSale && block.timestamp <= eventTiketEndSale, "Ticket sale not active"
+        );
 
         Ticket storage ticket = tickets[_ticketType];
         require(ticket.minted < ticket.maxSupply, "Sold out");
@@ -160,6 +162,7 @@ contract EventContract is ERC721Enumerable, Pausable {
 
         totalRevenue = 0;
     }
+
     function claimRefund(uint256 _tokenId) external {
         require(isCancelled, "Event is not cancelled");
         require(ownerOf(_tokenId) == msg.sender, "Not ticket owner");
