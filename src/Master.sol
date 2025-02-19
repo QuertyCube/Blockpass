@@ -23,6 +23,19 @@ contract MasterContract {
         _;
     }
 
+    struct EventParams {
+        string name;
+        string nftSymbol;
+        uint256 start;
+        uint256 end;
+        uint256 startSale;
+        uint256 endSale;
+        string[] ticketTypes;
+        uint256[] prices;
+        uint256[] maxSupplies;
+        address usdcToken;
+    }
+
     constructor(address _treasuryContract) {
         owner = msg.sender;
         treasuryContract = _treasuryContract;
@@ -38,30 +51,21 @@ contract MasterContract {
         emit VendorRemoved(_vendor);
     }
 
-    function createEvent(
-        string memory _name,
-        uint256 _start,
-        uint256 _end,
-        uint256 _startSale,
-        uint256 _endSale,
-        string[] memory _ticketTypes,
-        uint256[] memory _prices,
-        uint256[] memory _maxSupplies,
-        address _usdcToken
-    ) external onlyVendor returns (address) {
+    function createEvent(EventParams memory params) external onlyVendor returns (address) {
         EventContract newEvent = new EventContract(
             msg.sender, // Vendor sebagai eventOwner
             owner, // Owner utama dari MasterContract
-            _usdcToken,
+            params.usdcToken,
             treasuryContract,
-            _name,
-            _start,
-            _end,
-            _startSale,
-            _endSale,
-            _ticketTypes,
-            _prices,
-            _maxSupplies
+            params.name,
+            params.nftSymbol,
+            params.start,
+            params.end,
+            params.startSale,
+            params.endSale,
+            params.ticketTypes,
+            params.prices,
+            params.maxSupplies
         );
         eventContracts.push(address(newEvent));
         emit EventCreated(address(newEvent));

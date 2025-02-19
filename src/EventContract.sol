@@ -3,10 +3,11 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
-contract EventContract is ERC721Enumerable {
-    address public eventOwner; // Vendor yang membuat event
-    address public masterOwner; // Owner dari MasterContract
+contract EventContract is ERC721Enumerable, Pausable {
+    address public eventOwner;
+    address public masterOwner;
     address public treasuryContract;
     string public eventName;
     uint256 public eventStart;
@@ -25,6 +26,7 @@ contract EventContract is ERC721Enumerable {
 
     mapping(string => Ticket) public tickets;
     mapping(uint256 => string) public ticketTypesById;
+    mapping(address => bool) public additionalEventOwners;
     string[] public ticketTypes;
     uint256 public totalRevenue;
     uint256 private _nextTokenId = 1;
@@ -36,7 +38,7 @@ contract EventContract is ERC721Enumerable {
     event TicketTransferred(address indexed from, address indexed to, uint256 tokenId);
 
     modifier onlyEventOwner() {
-        require(msg.sender == eventOwner, "Not event owner");
+        require(msg.sender == eventOwner || additionalEventOwners[msg.sender], "Not event owner");
         _;
     }
 
@@ -56,6 +58,7 @@ contract EventContract is ERC721Enumerable {
         address _usdcToken,
         address _treasuryContract,
         string memory _name,
+        string memory _nftSymbol,
         uint256 _start,
         uint256 _end,
         uint256 _startSale,
@@ -63,7 +66,7 @@ contract EventContract is ERC721Enumerable {
         string[] memory _ticketTypes,
         uint256[] memory _prices,
         uint256[] memory _maxSupplies
-    ) ERC721("EventNFT", "ETKT") {
+    ) ERC721(_name, _nftSymbol) {
         require(_ticketTypes.length == _prices.length && _prices.length == _maxSupplies.length, "Invalid ticket data");
 
         eventOwner = _vendor;
@@ -82,7 +85,7 @@ contract EventContract is ERC721Enumerable {
         }
     }
 
-    function mintTicket(string memory _ticketType) external {
+    function mintTicket(string memory _ticketType) external whenNotPaused {
         require(!isCancelled, "Event is cancelled");
         require(block.timestamp >= eventTiketStartSale && block.timestamp <= eventTiketEndSale, "Ticket sale not active");
 
@@ -101,19 +104,33 @@ contract EventContract is ERC721Enumerable {
         emit TicketMinted(msg.sender, _ticketType, tokenId);
     }
 
-    function useTicket(uint256 _tokenId) external {
+    function getUserTickets(address _user) external view returns (uint256[] memory, string[] memory) {
+        uint256 balance = balanceOf(_user);
+        uint256[] memory ticketIds = new uint256[](balance);
+        string[] memory ticketTypesArray = new string[](balance);
+
+        for (uint256 i = 0; i < balance; i++) {
+            uint256 tokenId = tokenOfOwnerByIndex(_user, i);
+            ticketIds[i] = tokenId;
+            ticketTypesArray[i] = ticketTypesById[tokenId];
+        }
+
+        return (ticketIds, ticketTypesArray);
+    }
+
+    function useTicket(uint256 _tokenId) external whenNotPaused {
         require(ownerOf(_tokenId) == msg.sender, "Not ticket owner");
         _burn(_tokenId);
         emit TicketUsed(_tokenId);
     }
 
-    function transferTicket(address _to, uint256 _tokenId) external {
+    function transferTicket(address _to, uint256 _tokenId) external whenNotPaused {
         require(ownerOf(_tokenId) == msg.sender, "Not ticket owner");
         _transfer(msg.sender, _to, _tokenId);
         emit TicketTransferred(msg.sender, _to, _tokenId);
     }
 
-    function withdrawFunds() external onlyVendorOrOwner {
+    function withdrawFunds() external onlyVendorOrOwner whenNotPaused {
         require(block.timestamp > eventEnd, "Event is not over yet");
         require(!isCancelled, "Cannot withdraw, event cancelled");
         require(totalRevenue > 0, "No funds available");
@@ -132,5 +149,23 @@ contract EventContract is ERC721Enumerable {
     function cancelEvent(string memory reason) external onlyMasterOwner {
         isCancelled = true;
         emit EventCancelled(reason);
+    }
+
+    function addEventOwner(address _newOwner) external onlyEventOwner {
+        require(_newOwner != address(0), "Invalid address");
+        additionalEventOwners[_newOwner] = true;
+    }
+
+    function removeEventOwner(address _owner) external onlyEventOwner {
+        require(_owner != address(0), "Invalid address");
+        additionalEventOwners[_owner] = false;
+    }
+
+    function pause() external onlyMasterOwner {
+        _pause();
+    }
+
+    function unpause() external onlyMasterOwner {
+        _unpause();
     }
 }
