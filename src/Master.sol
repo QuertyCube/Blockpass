@@ -14,6 +14,7 @@ contract MasterContract {
     event VendorAdded(address indexed vendor);
     event VendorRemoved(address indexed vendor);
     event OwnerAdded(address indexed newOwner);
+    event FundsWithdrawn(address indexed owner, uint256 amount);
 
     modifier onlyOwner() {
         require(owners[msg.sender], "Not owner");
@@ -25,6 +26,12 @@ contract MasterContract {
         _;
     }
 
+    struct TicketInfo {
+        string ticketType;
+        uint256 price;
+        uint256 maxSupply;
+    }
+
     struct EventParams {
         string name;
         string nftSymbol;
@@ -32,9 +39,7 @@ contract MasterContract {
         uint256 end;
         uint256 startSale;
         uint256 endSale;
-        string[] ticketTypes;
-        uint256[] prices;
-        uint256[] maxSupplies;
+        TicketInfo[] ticketInfos;
         address usdcToken;
     }
 
@@ -65,8 +70,18 @@ contract MasterContract {
     function createEvent(EventParams memory params) external onlyVendor returns (address) {
         require(params.start < params.end, "Invalid event timing");
         require(params.startSale < params.endSale, "Invalid sale timing");
-        require(params.ticketTypes.length == params.prices.length && params.prices.length == params.maxSupplies.length, "Mismatched ticket data");
+        require(params.ticketInfos.length > 0, "Invalid ticket data");
         
+        EventContract.Ticket[] memory tickets = new EventContract.Ticket[](params.ticketInfos.length);
+        for (uint256 i = 0; i < params.ticketInfos.length; i++) {
+            tickets[i] = EventContract.Ticket({
+                ticketType: params.ticketInfos[i].ticketType,
+                price: params.ticketInfos[i].price,
+                maxSupply: params.ticketInfos[i].maxSupply,
+                minted: 0
+            });
+        }
+
         EventContract newEvent = new EventContract(
             msg.sender, // Vendor sebagai eventOwner
             owner, // Owner utama dari MasterContract
@@ -78,9 +93,7 @@ contract MasterContract {
             params.end,
             params.startSale,
             params.endSale,
-            params.ticketTypes,
-            params.prices,
-            params.maxSupplies
+            tickets
         );
 
         eventContracts.push(address(newEvent));
@@ -91,4 +104,41 @@ contract MasterContract {
     function getAllEvents() external view returns (address[] memory) {
         return eventContracts;
     }
+
+    // Function to receive Ether. msg.data must be empty
+    receive() external payable {}
+
+    // Function to withdraw Ether from the contract
+    function withdraw(uint256 amount) external onlyOwner {
+        require(amount <= address(this).balance, "Insufficient balance");
+        payable(owner).transfer(amount);
+        emit FundsWithdrawn(owner, amount);
+    }
 }
+
+
+/*
+
+ {
+  "name": "My Event",
+  "nftSymbol": "MEVT",
+  "start": 1672531200, // Unix timestamp for event start
+  "end": 1672617600, // Unix timestamp for event end
+  "startSale": 1672444800, // Unix timestamp for ticket sale start
+  "endSale": 1672527600, // Unix timestamp for ticket sale end
+  "ticketInfos": [
+    {
+      "ticketType": "VIP",
+      "price": 1000000000000000000, // 1 USDC in wei (assuming 18 decimals)
+      "maxSupply": 100
+    },
+    {
+      "ticketType": "Regular",
+      "price": 500000000000000000, // 0.5 USDC in wei (assuming 18 decimals)
+      "maxSupply": 500
+    }
+  ],
+  "usdcToken": "0xYourUSDCContractAddress"
+}
+
+ */

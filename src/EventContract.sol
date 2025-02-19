@@ -19,6 +19,7 @@ contract EventContract is ERC721Enumerable, Pausable {
     IERC20 public usdcToken;
 
     struct Ticket {
+        string ticketType;
         uint256 price;
         uint256 maxSupply;
         uint256 minted;
@@ -64,12 +65,8 @@ contract EventContract is ERC721Enumerable, Pausable {
         uint256 _end,
         uint256 _startSale,
         uint256 _endSale,
-        string[] memory _ticketTypes,
-        uint256[] memory _prices,
-        uint256[] memory _maxSupplies
+        Ticket[] memory _tickets
     ) ERC721(_name, _nftSymbol) {
-        require(_ticketTypes.length == _prices.length && _prices.length == _maxSupplies.length, "Invalid ticket data");
-
         eventOwner = _vendor;
         masterOwner = _masterOwner;
         usdcToken = IERC20(_usdcToken);
@@ -80,9 +77,9 @@ contract EventContract is ERC721Enumerable, Pausable {
         eventTiketStartSale = _startSale;
         eventTiketEndSale = _endSale;
 
-        for (uint256 i = 0; i < _ticketTypes.length; i++) {
-            tickets[_ticketTypes[i]] = Ticket(_prices[i], _maxSupplies[i], 0);
-            ticketTypes.push(_ticketTypes[i]);
+        for (uint256 i = 0; i < _tickets.length; i++) {
+            tickets[_tickets[i].ticketType] = _tickets[i];
+            ticketTypes.push(_tickets[i].ticketType);
         }
     }
 
@@ -93,14 +90,13 @@ contract EventContract is ERC721Enumerable, Pausable {
         Ticket storage ticket = tickets[_ticketType];
         require(ticket.minted < ticket.maxSupply, "Sold out");
 
-        uint256 price = ticket.price;
-        require(usdcToken.transferFrom(msg.sender, address(this), price), "USDC payment failed");
+        require(usdcToken.transferFrom(msg.sender, address(this), ticket.price), "USDC payment failed");
 
         uint256 tokenId = _nextTokenId++;
         _safeMint(msg.sender, tokenId);
         ticketTypesById[tokenId] = _ticketType;
         ticket.minted++;
-        totalRevenue += price;
+        totalRevenue += ticket.price;
 
         emit TicketMinted(msg.sender, _ticketType, tokenId);
     }
@@ -143,7 +139,6 @@ contract EventContract is ERC721Enumerable, Pausable {
         require(usdcToken.transfer(treasuryContract, treasuryAmount), "Treasury transfer failed");
 
         emit FundsWithdrawn(eventOwner, vendorAmount, treasuryAmount);
-
         totalRevenue = 0;
     }
 
