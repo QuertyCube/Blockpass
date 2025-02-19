@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 contract EventContract is ERC721Enumerable, Pausable {
     address public eventOwner;
@@ -36,6 +36,7 @@ contract EventContract is ERC721Enumerable, Pausable {
     event FundsWithdrawn(address indexed vendor, uint256 vendorAmount, uint256 treasuryAmount);
     event EventCancelled(string reason);
     event TicketTransferred(address indexed from, address indexed to, uint256 tokenId);
+    event TicketRefunded(address indexed buyer, uint256 tokenId, uint256 amount);
 
     modifier onlyEventOwner() {
         require(msg.sender == eventOwner || additionalEventOwners[msg.sender], "Not event owner");
@@ -149,6 +150,35 @@ contract EventContract is ERC721Enumerable, Pausable {
     function cancelEvent(string memory reason) external onlyMasterOwner {
         isCancelled = true;
         emit EventCancelled(reason);
+        // Refund all ticket holders
+        uint256 totalSupply = totalSupply();
+        for (uint256 i = 0; i < totalSupply; i++) {
+            uint256 tokenId = tokenByIndex(i);
+            address ticketOwner = ownerOf(tokenId);
+            string memory ticketType = ticketTypesById[tokenId];
+            uint256 refundAmount = tickets[ticketType].price;
+
+            _burn(tokenId);
+            require(usdcToken.transfer(ticketOwner, refundAmount), "Refund failed");
+            emit TicketRefunded(ticketOwner, tokenId, refundAmount);
+        }
+
+        totalRevenue = 0;
+    }
+    function claimRefund(uint256 _tokenId) external {
+        require(isCancelled, "Event is not cancelled");
+        require(ownerOf(_tokenId) == msg.sender, "Not ticket owner");
+
+        string memory ticketType = ticketTypesById[_tokenId];
+        uint256 refundAmount = tickets[ticketType].price;
+
+        // Attempt to transfer the refund amount before burning the token
+        bool refundSuccess = usdcToken.transfer(msg.sender, refundAmount);
+        require(refundSuccess, "Refund failed");
+
+        // Burn the token only if the refund was successful
+        _burn(_tokenId);
+        emit TicketRefunded(msg.sender, _tokenId, refundAmount);
     }
 
     function addEventOwner(address _newOwner) external onlyEventOwner {

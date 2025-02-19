@@ -7,14 +7,16 @@ contract MasterContract {
     address public owner;
     address public treasuryContract;
     mapping(address => bool) public vendors;
+    mapping(address => bool) public owners;
     address[] public eventContracts;
 
     event EventCreated(address indexed eventAddress);
     event VendorAdded(address indexed vendor);
     event VendorRemoved(address indexed vendor);
+    event OwnerAdded(address indexed newOwner);
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Not owner");
+        require(owners[msg.sender], "Not owner");
         _;
     }
 
@@ -38,20 +40,33 @@ contract MasterContract {
 
     constructor(address _treasuryContract) {
         owner = msg.sender;
+        owners[msg.sender] = true;
         treasuryContract = _treasuryContract;
     }
 
+    function addOwner(address _newOwner) external onlyOwner {
+        require(_newOwner != address(0), "Invalid address");
+        owners[_newOwner] = true;
+        emit OwnerAdded(_newOwner);
+    }
+
     function addVendor(address _vendor) external onlyOwner {
+        require(_vendor != address(0), "Invalid address");
         vendors[_vendor] = true;
         emit VendorAdded(_vendor);
     }
 
     function removeVendor(address _vendor) external onlyOwner {
+        require(_vendor != address(0), "Invalid address");
         vendors[_vendor] = false;
         emit VendorRemoved(_vendor);
     }
 
     function createEvent(EventParams memory params) external onlyVendor returns (address) {
+        require(params.start < params.end, "Invalid event timing");
+        require(params.startSale < params.endSale, "Invalid sale timing");
+        require(params.ticketTypes.length == params.prices.length && params.prices.length == params.maxSupplies.length, "Mismatched ticket data");
+        
         EventContract newEvent = new EventContract(
             msg.sender, // Vendor sebagai eventOwner
             owner, // Owner utama dari MasterContract
@@ -67,8 +82,13 @@ contract MasterContract {
             params.prices,
             params.maxSupplies
         );
+
         eventContracts.push(address(newEvent));
         emit EventCreated(address(newEvent));
         return address(newEvent);
+    }
+    
+    function getAllEvents() external view returns (address[] memory) {
+        return eventContracts;
     }
 }
