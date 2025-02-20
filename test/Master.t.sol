@@ -8,7 +8,7 @@ import "../src/EventContract.sol";
 contract MasterContractTest is Test {
     MasterContract masterContract;
     address treasuryContract = address(0x123);
-    address usdcToken = address(0x456);
+    address usdcToken = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238; // usdc sepolia
     address vendor = address(0x789);
 
     function setUp() public {
@@ -23,11 +23,12 @@ contract MasterContractTest is Test {
         assertTrue(newEventAddress != address(0));
         assertEq(masterContract.eventContracts(0), newEventAddress);
     }
+
     function createEvent() internal returns (address) {
         // Prepare the EventParams
         MasterContract.TicketInfo[] memory ticketInfos = new MasterContract.TicketInfo[](2);
-        ticketInfos[0] = MasterContract.TicketInfo({ticketType: "VIP", price: 100 * 10**6, maxSupply: 100});
-        ticketInfos[1] = MasterContract.TicketInfo({ticketType: "Regular", price: 50 * 10**6, maxSupply: 500});
+        ticketInfos[0] = MasterContract.TicketInfo({ticketType: "VIP", price: 100 * 10 ** 6, maxSupply: 100});
+        ticketInfos[1] = MasterContract.TicketInfo({ticketType: "Regular", price: 50 * 10 ** 6, maxSupply: 500});
 
         MasterContract.EventParams memory params = MasterContract.EventParams({
             name: "My Event",

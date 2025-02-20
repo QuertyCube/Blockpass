@@ -54,6 +54,20 @@ contract EventContract is ERC721Enumerable, Pausable {
         _;
     }
 
+    /**
+     * @dev Constructor to initialize the contract.
+     * @param _vendor Address of the event vendor.
+     * @param _masterOwner Address of the master owner.
+     * @param _usdcToken Address of the USDC token contract.
+     * @param _treasuryContract Address of the treasury contract.
+     * @param _name Name of the event.
+     * @param _nftSymbol Symbol of the NFT.
+     * @param _start Start timestamp of the event.
+     * @param _end End timestamp of the event.
+     * @param _startSale Start timestamp of the ticket sale.
+     * @param _endSale End timestamp of the ticket sale.
+     * @param _tickets Array of Ticket structs containing ticket details.
+     */
     constructor(
         address _vendor,
         address _masterOwner,
@@ -83,6 +97,10 @@ contract EventContract is ERC721Enumerable, Pausable {
         }
     }
 
+    /**
+     * @dev Function to mint a new ticket.
+     * @param _ticketType The type of the ticket to be minted.
+     */
     function mintTicket(string memory _ticketType) external whenNotPaused {
         require(!isCancelled, "Event is cancelled");
         require(
@@ -103,6 +121,12 @@ contract EventContract is ERC721Enumerable, Pausable {
         emit TicketMinted(msg.sender, _ticketType, tokenId);
     }
 
+    /**
+     * @dev Function to get all tickets owned by a user.
+     * @param _user The address of the user.
+     * @return ticketIds Array of ticket IDs owned by the user.
+     * @return ticketTypesArray Array of ticket types owned by the user.
+     */
     function getUserTickets(address _user) external view returns (uint256[] memory, string[] memory) {
         uint256 balance = balanceOf(_user);
         uint256[] memory ticketIds = new uint256[](balance);
@@ -117,18 +141,30 @@ contract EventContract is ERC721Enumerable, Pausable {
         return (ticketIds, ticketTypesArray);
     }
 
+    /**
+     * @dev Function to use a ticket.
+     * @param _tokenId The ID of the ticket to be used.
+     */
     function useTicket(uint256 _tokenId) external whenNotPaused {
         require(ownerOf(_tokenId) == msg.sender, "Not ticket owner");
         _burn(_tokenId);
         emit TicketUsed(_tokenId);
     }
 
+    /**
+     * @dev Function to transfer a ticket to another user.
+     * @param _to The address of the recipient.
+     * @param _tokenId The ID of the ticket to be transferred.
+     */
     function transferTicket(address _to, uint256 _tokenId) external whenNotPaused {
         require(ownerOf(_tokenId) == msg.sender, "Not ticket owner");
         _transfer(msg.sender, _to, _tokenId);
         emit TicketTransferred(msg.sender, _to, _tokenId);
     }
 
+    /**
+     * @dev Function to withdraw funds after the event ends.
+     */
     function withdrawFunds() external onlyVendorOrOwner whenNotPaused {
         require(block.timestamp > eventEnd, "Event is not over yet");
         require(!isCancelled, "Cannot withdraw, event cancelled");
@@ -144,6 +180,10 @@ contract EventContract is ERC721Enumerable, Pausable {
         totalRevenue = 0;
     }
 
+    /**
+     * @dev Function to cancel the event and refund all ticket holders.
+     * @param reason The reason for cancelling the event.
+     */
     function cancelEvent(string memory reason) external onlyMasterOwner {
         isCancelled = true;
         emit EventCancelled(reason);
@@ -163,6 +203,10 @@ contract EventContract is ERC721Enumerable, Pausable {
         totalRevenue = 0;
     }
 
+    /**
+     * @dev Function to claim a refund for a specific ticket.
+     * @param _tokenId The ID of the ticket to be refunded.
+     */
     function claimRefund(uint256 _tokenId) external {
         require(isCancelled, "Event is not cancelled");
         require(ownerOf(_tokenId) == msg.sender, "Not ticket owner");
@@ -179,20 +223,34 @@ contract EventContract is ERC721Enumerable, Pausable {
         emit TicketRefunded(msg.sender, _tokenId, refundAmount);
     }
 
+    /**
+     * @dev Function to add a new event owner.
+     * @param _newOwner The address of the new event owner.
+     */
     function addEventOwner(address _newOwner) external onlyEventOwner {
         require(_newOwner != address(0), "Invalid address");
         additionalEventOwners[_newOwner] = true;
     }
 
+    /**
+     * @dev Function to remove an event owner.
+     * @param _owner The address of the event owner to be removed.
+     */
     function removeEventOwner(address _owner) external onlyEventOwner {
         require(_owner != address(0), "Invalid address");
         additionalEventOwners[_owner] = false;
     }
 
+    /**
+     * @dev Function to pause the contract.
+     */
     function pause() external onlyMasterOwner {
         _pause();
     }
 
+    /**
+     * @dev Function to unpause the contract.
+     */
     function unpause() external onlyMasterOwner {
         _unpause();
     }

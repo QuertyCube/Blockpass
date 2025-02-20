@@ -67,6 +67,9 @@ contract MasterContract {
         emit VendorRemoved(_vendor);
     }
 
+    /// @notice Creates a new event contract
+    /// @param params The parameters for the new event
+    /// @return The address of the newly created event contract
     function createEvent(EventParams memory params) external onlyVendor returns (address) {
         require(params.start < params.end, "Invalid event timing");
         require(params.startSale < params.endSale, "Invalid sale timing");
@@ -83,8 +86,8 @@ contract MasterContract {
         }
 
         EventContract newEvent = new EventContract(
-            msg.sender, // Vendor sebagai eventOwner
-            owner, // Owner utama dari MasterContract
+            msg.sender, // Vendor as eventOwner
+            owner, // Main owner of the MasterContract
             params.usdcToken,
             treasuryContract,
             params.name,
@@ -101,14 +104,17 @@ contract MasterContract {
         return address(newEvent);
     }
 
+    /// @notice Returns all event contracts created
+    /// @return An array of addresses of all event contracts
     function getAllEvents() external view returns (address[] memory) {
         return eventContracts;
     }
 
-    // Function to receive Ether. msg.data must be empty
+    /// @notice Allows the contract to receive Ether
     receive() external payable {}
 
-    // Function to withdraw Ether from the contract
+    /// @notice Withdraws Ether from the contract
+    /// @param amount The amount of Ether to withdraw
     function withdraw(uint256 amount) external onlyOwner {
         require(amount <= address(this).balance, "Insufficient balance");
         payable(owner).transfer(amount);
