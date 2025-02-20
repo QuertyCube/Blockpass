@@ -113,12 +113,12 @@ contract MasterContract {
     /// @notice Allows the contract to receive Ether
     receive() external payable {}
 
-    /// @notice Withdraws Ether from the contract
+    /// @notice Withdraws Ether from the contract to the treasury contract
     /// @param amount The amount of Ether to withdraw
     function withdraw(uint256 amount) external onlyOwner {
         require(amount <= address(this).balance, "Insufficient balance");
-        payable(owner).transfer(amount);
-        emit FundsWithdrawn(owner, amount);
+        payable(treasuryContract).transfer(amount);
+        emit FundsWithdrawn(treasuryContract, amount);
     }
 }
 
