@@ -1,66 +1,7 @@
-## Foundry
+# BlockPass
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Blockpass is a decentralized event management system that ensures a secure, transparent, and trustless ticketing experience.
 
-Foundry consists of:
+With blockchain technology at its core, users can seamlessly purchase tickets with full confidence, knowing that their transactions are immutable and verifiable. Event organizers benefit from a tamper-proof system that prevents fraud, scalping, and unauthorized resales. Every ticket is securely stored on the blockchain as an NFT, providing authenticity and ownership verification.
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+By leveraging smart contracts, our platform enables real-time ticket issuance, automated pricing adjustments, and seamless secondary market trading—all while maintaining transparency and fairness. Whether you're hosting concerts, conferences, or exclusive events, our decentralized ticketing system revolutionizes the way tickets are issued, sold, and validated.
