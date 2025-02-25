@@ -2,22 +2,20 @@
 pragma solidity ^0.8.19;
 
 import "./EventContract.sol";
+import "./MasterOwnerModifier.sol";
 
 contract MasterContract {
     address public owner;
-    address public treasuryContract;
-    mapping(address => bool) public vendors;
-    mapping(address => bool) public owners;
+    address public immutable treasuryContract;
+    MasterOwnerModifier public immutable masterOwnerModifier;
+
     address[] public eventContracts;
 
     event EventCreated(address indexed eventAddress);
-    event VendorAdded(address indexed vendor);
-    event VendorRemoved(address indexed vendor);
-    event OwnerAdded(address indexed newOwner);
     event FundsWithdrawn(address indexed owner, uint256 amount);
 
     modifier onlyOwner() {
-        require(owners[msg.sender], "Not owner");
+        require(masterOwnerModifier.isMasterOwner(msg.sender), "Caller is not an owner");
         _;
     }
 
@@ -38,28 +36,19 @@ contract MasterContract {
         address usdcToken;
     }
 
-    constructor(address _treasuryContract) {
+    constructor(address _treasuryContract, address _ownerModifierAddress) {
         owner = msg.sender;
-        owners[msg.sender] = true;
         treasuryContract = _treasuryContract;
+        masterOwnerModifier = MasterOwnerModifier(_ownerModifierAddress);
     }
 
     function addOwner(address _newOwner) external onlyOwner {
-        require(_newOwner != address(0), "Invalid address");
-        owners[_newOwner] = true;
-        emit OwnerAdded(_newOwner);
+        masterOwnerModifier.addMasterOwner(_newOwner);
     }
 
-    function addVendor(address _vendor) external onlyOwner {
-        require(_vendor != address(0), "Invalid address");
-        vendors[_vendor] = true;
-        emit VendorAdded(_vendor);
-    }
-
-    function removeVendor(address _vendor) external onlyOwner {
-        require(_vendor != address(0), "Invalid address");
-        vendors[_vendor] = false;
-        emit VendorRemoved(_vendor);
+    // Function to remove an owner using OwnerModifier contract
+    function removeOwner(address _owner) public {
+        masterOwnerModifier.removeMasterOwner(_owner);
     }
 
     /// @notice Creates a new event contract
@@ -85,6 +74,7 @@ contract MasterContract {
             owner, // Main owner of the MasterContract
             params.usdcToken,
             treasuryContract,
+            address(masterOwnerModifier), // Pass the ownerModifier address
             params.name,
             params.nftSymbol,
             params.start,
@@ -116,29 +106,3 @@ contract MasterContract {
         emit FundsWithdrawn(treasuryContract, amount);
     }
 }
-
-/*
-
- {
-  "name": "My Event",
-  "nftSymbol": "MEVT",
-  "start": 1672531200, // Unix timestamp for event start
-  "end": 1672617600, // Unix timestamp for event end
-  "startSale": 1672444800, // Unix timestamp for ticket sale start
-  "endSale": 1672527600, // Unix timestamp for ticket sale end
-  "ticketInfos": [
-    {
-      "ticketType": "VIP",
-      "price": 1000000000000000000, // 1 USDC in wei (assuming 18 decimals)
-      "maxSupply": 100
-    },
-    {
-      "ticketType": "Regular",
-      "price": 500000000000000000, // 0.5 USDC in wei (assuming 18 decimals)
-      "maxSupply": 500
-    }
-  ],
-  "usdcToken": "0xYourUSDCContractAddress"
-}
-
- */

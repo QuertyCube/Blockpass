@@ -4,19 +4,26 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
+import "./MasterOwnerModifier.sol";
 
 contract EventContract is ERC721Enumerable, Pausable {
     address public eventOwner;
     address public masterOwner;
     address public treasuryContract;
+    IERC20 public usdcToken;
+    MasterOwnerModifier public masterOwnerModifier;
+
     string public eventName;
+    string[] public ticketTypes;
+
     uint256 public eventStart;
     uint256 public eventEnd;
     uint256 public eventTiketStartSale;
     uint256 public eventTiketEndSale;
-    bool public isCancelled = false;
+    uint256 public totalRevenue;
+    uint256 private _nextTokenId = 1;
 
-    IERC20 public usdcToken;
+    bool public isCancelled = false;
 
     struct Ticket {
         string ticketType;
@@ -28,16 +35,13 @@ contract EventContract is ERC721Enumerable, Pausable {
     mapping(string => Ticket) public tickets;
     mapping(uint256 => string) public ticketTypesById;
     mapping(address => bool) public additionalEventOwners;
-    string[] public ticketTypes;
-    uint256 public totalRevenue;
-    uint256 private _nextTokenId = 1;
 
-    event TicketMinted(address indexed buyer, string ticketType, uint256 tokenId);
-    event TicketUsed(uint256 tokenId);
-    event FundsWithdrawn(address indexed vendor, uint256 vendorAmount, uint256 treasuryAmount);
     event EventCancelled(string reason);
-    event TicketTransferred(address indexed from, address indexed to, uint256 tokenId);
+    event FundsWithdrawn(address indexed vendor, uint256 vendorAmount, uint256 treasuryAmount);
+    event TicketMinted(address indexed buyer, string ticketType, uint256 tokenId);
     event TicketRefunded(address indexed buyer, uint256 tokenId, uint256 amount);
+    event TicketTransferred(address indexed from, address indexed to, uint256 tokenId);
+    event TicketUsed(uint256 tokenId);
 
     modifier onlyEventOwner() {
         require(msg.sender == eventOwner || additionalEventOwners[msg.sender], "Not event owner");
@@ -45,12 +49,12 @@ contract EventContract is ERC721Enumerable, Pausable {
     }
 
     modifier onlyMasterOwner() {
-        require(msg.sender == masterOwner, "Not master owner");
+        require(masterOwnerModifier.isMasterOwner(msg.sender), "Caller is not an owner");
         _;
     }
 
     modifier onlyVendorOrOwner() {
-        require(msg.sender == eventOwner || msg.sender == masterOwner, "Not vendor or owner");
+        require(msg.sender == eventOwner || masterOwnerModifier.isMasterOwner(msg.sender), "Not vendor or owner");
         _;
     }
 
@@ -73,6 +77,7 @@ contract EventContract is ERC721Enumerable, Pausable {
         address _masterOwner,
         address _usdcToken,
         address _treasuryContract,
+        address _ownerModifierAddress,
         string memory _name,
         string memory _nftSymbol,
         uint256 _start,
@@ -85,6 +90,7 @@ contract EventContract is ERC721Enumerable, Pausable {
         masterOwner = _masterOwner;
         usdcToken = IERC20(_usdcToken);
         treasuryContract = _treasuryContract;
+        masterOwnerModifier = MasterOwnerModifier(_ownerModifierAddress);
         eventName = _name;
         eventStart = _start;
         eventEnd = _end;
@@ -101,7 +107,7 @@ contract EventContract is ERC721Enumerable, Pausable {
      * @dev Function to mint a new ticket.
      * @param _ticketType The type of the ticket to be minted.
      */
-    function mintTicket(string memory _ticketType) external whenNotPaused {
+    function mintTicket(string calldata _ticketType) external whenNotPaused {
         require(!isCancelled, "Event is cancelled");
         require(
             block.timestamp >= eventTiketStartSale && block.timestamp <= eventTiketEndSale, "Ticket sale not active"
@@ -184,7 +190,7 @@ contract EventContract is ERC721Enumerable, Pausable {
      * @dev Function to cancel the event and refund all ticket holders.
      * @param reason The reason for cancelling the event.
      */
-    function cancelEvent(string memory reason) external onlyMasterOwner {
+    function cancelEvent(string calldata reason) external onlyVendorOrOwner {
         isCancelled = true;
         emit EventCancelled(reason);
         // Refund all ticket holders
@@ -207,7 +213,7 @@ contract EventContract is ERC721Enumerable, Pausable {
      * @dev Function to claim a refund for a specific ticket.
      * @param _tokenId The ID of the ticket to be refunded.
      */
-    function claimRefund(uint256 _tokenId) external {
+    function claimRefund(uint256 _tokenId) public {
         require(isCancelled, "Event is not cancelled");
         require(ownerOf(_tokenId) == msg.sender, "Not ticket owner");
 
