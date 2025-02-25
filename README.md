@@ -1,5 +1,9 @@
 # BlockPass
 
+
+![alt text](https://github.com/QuertyCube/Blockpass/blob/main/Logo.png?raw=true)
+
+
 Blockpass is a decentralized event management system that ensures a secure, transparent, and trustless ticketing experience.
 
 With blockchain technology at its core, users can seamlessly purchase tickets with full confidence, knowing that their transactions are immutable and verifiable. Event organizers benefit from a tamper-proof system that prevents fraud, scalping, and unauthorized resales. Every ticket is securely stored on the blockchain as an NFT, providing authenticity and ownership verification.
