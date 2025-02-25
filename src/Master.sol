@@ -21,11 +21,6 @@ contract MasterContract {
         _;
     }
 
-    modifier onlyVendor() {
-        require(vendors[msg.sender], "Not vendor");
-        _;
-    }
-
     struct TicketInfo {
         string ticketType;
         uint256 price;
@@ -70,7 +65,7 @@ contract MasterContract {
     /// @notice Creates a new event contract
     /// @param params The parameters for the new event
     /// @return The address of the newly created event contract
-    function createEvent(EventParams memory params) external onlyVendor returns (address) {
+    function createEvent(EventParams memory params) external returns (address) {
         require(params.start < params.end, "Invalid event timing");
         require(params.startSale < params.endSale, "Invalid sale timing");
         require(params.ticketInfos.length > 0, "Invalid ticket data");

@@ -1,6 +1,5 @@
 # BlockPass
 
-
 ![alt text](https://github.com/QuertyCube/Blockpass/blob/main/Logo.png?raw=true)
 
 
