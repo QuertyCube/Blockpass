@@ -6,36 +6,40 @@ import "../src/Master.sol";
 import "../src/EventContract.sol";
 import "../src/MasterOwnerModifier.sol";
 import "../src/MockERC20.sol";
+import "../src/TreasuryFund.sol";
 
 contract MasterContractTest is Test {
     MasterContract public masterContract;
     MasterOwnerModifier public ownerModifier;
     MockERC20 public usdc;
+    TreasuryFund public treasury;
     
     address public owner = address(0x1);
     address public vendor = address(0x2);
-    address public treasury = address(0x3);
-    address public nonOwner = address(0x4);
+    address public nonOwner = address(0x3);
 
     function setUp() public {
         // Deploy Owner Modifier contract
-        ownerModifier = new MasterOwnerModifier(owner);
+        vm.startPrank(owner);
+        ownerModifier = new MasterOwnerModifier();
         
         // Deploy USDC mock token
         usdc = new MockERC20("Mock USDC", "USDC", 18);
 
+        // Deploy Treasury contract
+        treasury = new TreasuryFund();
+
         // Deploy MasterContract
-        vm.prank(owner);
-        masterContract = new MasterContract(treasury, address(ownerModifier));
+        masterContract = new MasterContract(address(treasury), address(ownerModifier));
 
         // Add owner to Owner Modifier contract
-        vm.prank(owner);
         ownerModifier.addMasterOwner(owner);
+        vm.stopPrank();
     }
 
     function test_CreateEvent_Success() public {
         // Define event parameters
-        MasterContract.TicketInfo;
+        MasterContract.TicketInfo[] memory tickets = new MasterContract.TicketInfo[](1);
         tickets[0] = MasterContract.TicketInfo("VIP", 100 ether, 100);
 
         MasterContract.EventParams memory params = MasterContract.EventParams({
@@ -60,7 +64,7 @@ contract MasterContractTest is Test {
     }
 
     function test_CreateEvent_Fail_InvalidTiming() public {
-        MasterContract.TicketInfo;
+        MasterContract.TicketInfo[] memory tickets = new MasterContract.TicketInfo[](1);
         tickets[0] = MasterContract.TicketInfo("VIP", 100 ether, 100);
 
         MasterContract.EventParams memory invalidParams = MasterContract.EventParams({
@@ -80,7 +84,7 @@ contract MasterContractTest is Test {
     }
 
     function test_CreateEvent_Fail_InvalidSaleTiming() public {
-        MasterContract.TicketInfo;
+        MasterContract.TicketInfo[] memory tickets = new MasterContract.TicketInfo[](1);
         tickets[0] = MasterContract.TicketInfo("VIP", 100 ether, 100);
 
         MasterContract.EventParams memory invalidParams = MasterContract.EventParams({
@@ -100,7 +104,7 @@ contract MasterContractTest is Test {
     }
 
     function test_CreateEvent_Fail_NoTickets() public {
-        MasterContract.TicketInfo;
+        MasterContract.TicketInfo[] memory tickets = new MasterContract.TicketInfo[](0);
 
         MasterContract.EventParams memory invalidParams = MasterContract.EventParams({
             name: "No Tickets Event",

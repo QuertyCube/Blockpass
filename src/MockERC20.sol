@@ -2,13 +2,13 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+
 
 /**
  * @title MockERC20
  * @dev Implementation of the ERC20 Token with mint and burn functions.
  */
-contract MockERC20 is ERC20, Ownable {
+contract MockERC20 is ERC20 {
     uint8 private _decimals;
 
     /**
@@ -29,14 +29,14 @@ contract MockERC20 is ERC20, Ownable {
     /**
      * @dev Mints `amount` tokens to `to`. Can only be called by the owner.
      */
-    function mint(address to, uint256 amount) external onlyOwner {
+    function mint(address to, uint256 amount) external  {
         _mint(to, amount);
     }
 
     /**
      * @dev Burns `amount` tokens from `from`. Can only be called by the owner.
      */
-    function burn(address from, uint256 amount) external onlyOwner {
+    function burn(address from, uint256 amount) external  {
         _burn(from, amount);
     }
 }
