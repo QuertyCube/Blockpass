@@ -170,6 +170,8 @@ contract EventContract is ERC721Enumerable, Pausable {
      */
     function transferTicket(address _to, uint256 _tokenId) external whenNotPaused {
         if (ownerOf(_tokenId) != msg.sender) revert NotTicketOwner();
+        if (block.timestamp >= eventStart - 24 hours) revert("Ticket transfers are not allowed 24 hours before the event");
+
         _transfer(msg.sender, _to, _tokenId);
         emit TicketTransferred(msg.sender, _to, _tokenId);
     }
