@@ -43,6 +43,15 @@ contract EventContract is ERC721Enumerable, Pausable {
     event TicketTransferred(address indexed from, address indexed to, uint256 tokenId);
     event TicketUsed(uint256 tokenId);
 
+    error EventNotCancel();
+    error TicketSoldOut();
+    error TicketSaleNotActive();
+    error PaymentFailed();
+    error NotTicketOwner();
+    error EventNotOver();
+    error NoFundsAvailable();
+    error InvalidAddress();
+
     modifier onlyEventOwner() {
         require(msg.sender == eventOwner || additionalEventOwners[msg.sender], "Not event owner");
         _;
@@ -108,16 +117,13 @@ contract EventContract is ERC721Enumerable, Pausable {
      * @param _ticketType The type of the ticket to be minted.
      */
     function mintTicket(string calldata _ticketType) external whenNotPaused {
-        require(!isCancelled, "Event is cancelled");
-        require(
-            block.timestamp >= eventTiketStartSale && block.timestamp <= eventTiketEndSale, "Ticket sale not active"
-        );
-
+        if (isCancelled) revert EventNotCancel();
+        if (block.timestamp < eventTiketStartSale || block.timestamp > eventTiketEndSale) revert TicketSaleNotActive();
+    
         Ticket storage ticket = tickets[_ticketType];
-        require(ticket.minted < ticket.maxSupply, "Sold out");
-
-        require(usdcToken.transferFrom(msg.sender, address(this), ticket.price), "USDC payment failed");
-
+        if (ticket.minted >= ticket.maxSupply) revert TicketSoldOut();
+        if (!usdcToken.transferFrom(msg.sender, address(this), ticket.price)) revert PaymentFailed();
+        
         uint256 tokenId = _nextTokenId++;
         _safeMint(msg.sender, tokenId);
         ticketTypesById[tokenId] = _ticketType;
@@ -152,7 +158,7 @@ contract EventContract is ERC721Enumerable, Pausable {
      * @param _tokenId The ID of the ticket to be used.
      */
     function useTicket(uint256 _tokenId) external whenNotPaused {
-        require(ownerOf(_tokenId) == msg.sender, "Not ticket owner");
+        if (ownerOf(_tokenId) != msg.sender) revert NotTicketOwner();
         _burn(_tokenId);
         emit TicketUsed(_tokenId);
     }
@@ -163,18 +169,32 @@ contract EventContract is ERC721Enumerable, Pausable {
      * @param _tokenId The ID of the ticket to be transferred.
      */
     function transferTicket(address _to, uint256 _tokenId) external whenNotPaused {
-        require(ownerOf(_tokenId) == msg.sender, "Not ticket owner");
+        if (ownerOf(_tokenId) != msg.sender) revert NotTicketOwner();
         _transfer(msg.sender, _to, _tokenId);
         emit TicketTransferred(msg.sender, _to, _tokenId);
+    }
+
+    /**
+     * @dev Function to modify the max supply of a ticket type.
+     * @param _ticketType The type of the ticket to be modified.
+     * @param _newMaxSupply The new max supply for the ticket type.
+     */
+    function modifyTicketMaxSupply(string calldata _ticketType, uint256 _newMaxSupply) external onlyEventOwner {
+        require(_newMaxSupply > 0, "Max supply must be greater than zero");
+        Ticket storage ticket = tickets[_ticketType];
+        require(ticket.maxSupply > 0, "Ticket type does not exist");
+        require(_newMaxSupply >= ticket.minted, "New max supply cannot be less than minted tickets");
+
+        ticket.maxSupply = _newMaxSupply;
     }
 
     /**
      * @dev Function to withdraw funds after the event ends.
      */
     function withdrawFunds() external onlyVendorOrOwner whenNotPaused {
-        require(block.timestamp > eventEnd, "Event is not over yet");
-        require(!isCancelled, "Cannot withdraw, event cancelled");
-        require(totalRevenue > 0, "No funds available");
+        if (block.timestamp <= eventEnd) revert EventNotOver();
+        if (isCancelled) revert EventNotCancel();
+        if (totalRevenue == 0) revert NoFundsAvailable();
 
         uint256 treasuryAmount = totalRevenue / 100; // 1% for treasury
         uint256 vendorAmount = totalRevenue - treasuryAmount;
@@ -214,8 +234,8 @@ contract EventContract is ERC721Enumerable, Pausable {
      * @param _tokenId The ID of the ticket to be refunded.
      */
     function claimRefund(uint256 _tokenId) public {
-        require(isCancelled, "Event is not cancelled");
-        require(ownerOf(_tokenId) == msg.sender, "Not ticket owner");
+        if (!isCancelled) revert EventNotCancel();
+        if (ownerOf(_tokenId) != msg.sender) revert NotTicketOwner();
 
         string memory ticketType = ticketTypesById[_tokenId];
         uint256 refundAmount = tickets[ticketType].price;
@@ -234,7 +254,7 @@ contract EventContract is ERC721Enumerable, Pausable {
      * @param _newOwner The address of the new event owner.
      */
     function addEventOwner(address _newOwner) external onlyEventOwner {
-        require(_newOwner != address(0), "Invalid address");
+        if (_newOwner == address(0)) revert InvalidAddress();
         additionalEventOwners[_newOwner] = true;
     }
 
@@ -243,7 +263,7 @@ contract EventContract is ERC721Enumerable, Pausable {
      * @param _owner The address of the event owner to be removed.
      */
     function removeEventOwner(address _owner) external onlyEventOwner {
-        require(_owner != address(0), "Invalid address");
+        if (_owner == address(0)) revert InvalidAddress();
         additionalEventOwners[_owner] = false;
     }
 
@@ -261,3 +281,74 @@ contract EventContract is ERC721Enumerable, Pausable {
         _unpause();
     }
 }
+
+/**
+Berikut adalah daftar fungsi dalam kontrak EventContract beserta penjelasan singkat mengenai fungsinya:
+
+Daftar Fungsi:
+constructor
+    Menginisialisasi kontrak dengan parameter yang diberikan, seperti vendor, master owner, token USDC, kontrak treasury, nama event, simbol NFT, waktu mulai dan berakhirnya event, serta detail tiket.
+
+mintTicket
+    Memungkinkan pengguna untuk mencetak tiket baru jika event tidak dibatalkan dan penjualan tiket sedang aktif. Fungsi ini juga memeriksa apakah tiket masih tersedia dan pembayaran USDC berhasil.
+
+getUserTickets
+    Mengembalikan daftar ID tiket dan jenis tiket yang dimiliki oleh pengguna tertentu.
+
+useTicket
+    Memungkinkan pengguna untuk menggunakan tiket yang mereka miliki. Tiket akan dibakar setelah digunakan.
+
+transferTicket
+    Memungkinkan pengguna untuk mentransfer tiket mereka ke pengguna lain.
+
+modifyTicketMaxSupply
+    Memodifikasi jumlah maksimum tiket yang dapat dicetak untuk jenis tiket tertentu. Hanya pemilik event yang dapat memanggil fungsi ini.
+
+withdrawFunds
+    Memungkinkan vendor atau pemilik untuk menarik dana setelah event berakhir. Fungsi ini juga membagi dana antara vendor dan treasury.
+
+cancelEvent
+    Membatalkan event dan mengembalikan dana kepada semua pemegang tiket. Hanya vendor atau pemilik yang dapat memanggil fungsi ini.
+
+claimRefund
+    Memungkinkan pemegang tiket untuk mengklaim pengembalian dana jika event dibatalkan.
+
+addEventOwner
+    Menambahkan pemilik event baru. Hanya pemilik event yang dapat memanggil fungsi ini.
+
+removeEventOwner
+    Menghapus pemilik event. Hanya pemilik event yang dapat memanggil fungsi ini.
+
+pause
+Menjeda kontrak. Hanya master owner yang dapat memanggil fungsi ini.
+
+unpause
+    Melanjutkan kontrak yang dijeda. Hanya master owner yang dapat memanggil fungsi ini.
+
+
+
+Alur Kontrak
+Inisialisasi Kontrak
+    Kontrak diinisialisasi dengan parameter yang diberikan melalui konstruktor. Ini termasuk detail event, waktu mulai dan berakhirnya event, serta detail tiket.
+
+Penjualan Tiket
+    Pengguna dapat mencetak tiket baru selama penjualan tiket aktif dan event tidak dibatalkan. Pembayaran dilakukan menggunakan token USDC.
+
+Penggunaan dan Transfer Tiket
+    Pengguna dapat menggunakan tiket mereka untuk menghadiri event atau mentransfer tiket ke pengguna lain.
+
+Modifikasi dan Penarikan Dana
+    Pemilik event dapat memodifikasi jumlah maksimum tiket yang dapat dicetak. Setelah event berakhir, vendor atau pemilik dapat menarik dana yang terkumpul.
+
+Pembatalan Event dan Pengembalian Dana
+    Jika event dibatalkan, semua pemegang tiket akan mendapatkan pengembalian dana. Pemegang tiket juga dapat mengklaim pengembalian dana secara individual.
+
+Manajemen Pemilik Event
+    Pemilik event dapat menambahkan atau menghapus pemilik event lainnya.
+
+Pengelolaan Kontrak
+    Master owner dapat menjeda atau melanjutkan kontrak sesuai kebutuhan.
+
+
+Dengan alur ini, kontrak EventContract memungkinkan pengelolaan event yang terdesentralisasi, termasuk penjualan tiket, penggunaan tiket, transfer tiket, dan manajemen dana.
+ */
