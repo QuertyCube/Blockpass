@@ -1,6 +1,8 @@
 # BlockPass - Decentralized Ticket Based Event Access
 ![alt text](https://github.com/QuertyCube/Blockpass/blob/main/Logo.png?raw=true)
-<img align="left" width="100" height="100" src="https://github.com/QuertyCube/Blockpass/blob/main/Logo.png?raw=true">
+
+<img align="left" style="width: 60%;" src="https://github.com/QuertyCube/Blockpass/blob/main/Logo.png?raw=true">
+
 ## Introduction
 Blockpass is a decentralized event management system that ensures a secure, transparent, and trustless ticketing experience.
 
