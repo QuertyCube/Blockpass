@@ -1,6 +1,6 @@
 # BlockPass - Decentralized Ticket Based Event Access
 
-<p align="center">
+<p align="left">
 <img style="width: 60%;" src="https://github.com/QuertyCube/Blockpass/blob/main/Logo.png?raw=true">
 </p>
 
