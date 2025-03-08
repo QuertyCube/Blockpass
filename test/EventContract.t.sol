@@ -16,11 +16,13 @@ contract EventContractTest is Test {
     address user = address(0x4);
 
     function setUp() public {
+        // Initialize mock USDC token and master owner modifier
         usdcToken = new MockERC20("Mock USDC", "USDC", 6);
         masterOwnerModifier = new MasterOwnerModifier();
         masterOwnerModifier.addMasterOwner(masterOwner);
 
-        EventContract.Ticket[] memory tickets = new EventContract.Ticket[](1);
+        // Initialize tickets
+        EventContract.Ticket[] memory tickets = new EventContract.Ticket[](2);
         tickets[0] = EventContract.Ticket({
             ticketType: "VIP",
             price: 100 * 10**6, // 100 USDC
@@ -35,6 +37,7 @@ contract EventContractTest is Test {
             minted: 0
         });
 
+        // Deploy EventContract
         eventContract = new EventContract(
             vendor,
             masterOwner,
@@ -50,10 +53,12 @@ contract EventContractTest is Test {
             tickets
         );
 
-        usdcToken.mint(user, 1000 * 10**6); // Mint 1000 USDC to user
+        // Mint 1000 USDC to user
+        usdcToken.mint(user, 1000 * 10**6);
     }
 
     function testMintTicketHappyFlow() public {
+        // User approves and mints a VIP ticket
         vm.startPrank(user);
         usdcToken.approve(address(eventContract), 100 * 10**6);
         eventContract.mintTicket("VIP");
@@ -62,12 +67,15 @@ contract EventContractTest is Test {
     }
 
     function testWithdrawFundsHappyFlow() public {
+        // User mints a VIP ticket
         vm.startPrank(user);
         usdcToken.approve(address(eventContract), 100 * 10**6);
         eventContract.mintTicket("VIP");
         vm.stopPrank();
 
-        vm.warp(block.timestamp + 2 days); // Move time forward to after event end
+        // Move time forward to after event end
+        vm.warp(block.timestamp + 2 days);
+        // Vendor withdraws funds
         vm.startPrank(vendor);
         eventContract.withdrawFunds();
         assertEq(usdcToken.balanceOf(vendor), 99 * 10**6); // 99 USDC to vendor
@@ -76,6 +84,7 @@ contract EventContractTest is Test {
     }
 
     function testMintTicketUnhappyFlow() public {
+        // User tries to mint a VIP ticket after ticket sale end
         vm.startPrank(user);
         usdcToken.approve(address(eventContract), 100 * 10**6);
         vm.warp(block.timestamp + 2 days); // Move time forward to after ticket sale end
@@ -85,11 +94,13 @@ contract EventContractTest is Test {
     }
 
     function testWithdrawFundsUnhappyFlow() public {
+        // User mints a VIP ticket
         vm.startPrank(user);
         usdcToken.approve(address(eventContract), 100 * 10**6);
         eventContract.mintTicket("VIP");
         vm.stopPrank();
 
+        // Vendor tries to withdraw funds before event end
         vm.startPrank(vendor);
         vm.expectRevert(EventContract.EventNotOver.selector);
         eventContract.withdrawFunds();
@@ -97,11 +108,13 @@ contract EventContractTest is Test {
     }
 
     function testCancelEvent() public {
+        // User mints a VIP ticket
         vm.startPrank(user);
         usdcToken.approve(address(eventContract), 100 * 10**6);
         eventContract.mintTicket("VIP");
         vm.stopPrank();
 
+        // Vendor cancels the event
         vm.startPrank(vendor);
         eventContract.cancelEvent("Event cancelled");
         assertTrue(eventContract.isCancelled());
@@ -109,15 +122,18 @@ contract EventContractTest is Test {
     }
 
     function testClaimRefund() public {
+        // User mints a VIP ticket
         vm.startPrank(user);
         usdcToken.approve(address(eventContract), 100 * 10**6);
         eventContract.mintTicket("VIP");
         vm.stopPrank();
 
+        // Vendor cancels the event
         vm.startPrank(vendor);
         eventContract.cancelEvent("Event cancelled");
         vm.stopPrank();
 
+        // User claims refund
         vm.startPrank(user);
         eventContract.claimRefund(1);
         assertEq(usdcToken.balanceOf(user), 1000 * 10**6); // User gets refund
@@ -125,12 +141,14 @@ contract EventContractTest is Test {
     }
 
     function testGetUserTickets() public {
+        // User mints two VIP tickets
         vm.startPrank(user);
         usdcToken.approve(address(eventContract), 200 * 10**6);
         eventContract.mintTicket("VIP");
         eventContract.mintTicket("VIP");
         vm.stopPrank();
 
+        // Get user tickets
         (uint256[] memory ticketIds, string[] memory ticketTypes) = eventContract.getUserTickets(user);
         assertEq(ticketIds.length, 2);
         assertEq(ticketTypes.length, 2);
@@ -139,6 +157,7 @@ contract EventContractTest is Test {
     }
 
     function testUseTicket() public {
+        // User mints and uses a VIP ticket
         vm.startPrank(user);
         usdcToken.approve(address(eventContract), 100 * 10**6);
         eventContract.mintTicket("VIP");
@@ -148,6 +167,7 @@ contract EventContractTest is Test {
     }
 
     function testTransferTicket() public {
+        // User mints and transfers a VIP ticket
         vm.startPrank(user);
         usdcToken.approve(address(eventContract), 100 * 10**6);
         eventContract.mintTicket("VIP");
@@ -157,6 +177,7 @@ contract EventContractTest is Test {
     }
 
     function testModifyTicketMaxSupply() public {
+        // Vendor modifies the max supply of VIP tickets
         vm.startPrank(vendor);
         eventContract.modifyTicketMaxSupply("VIP", 200);
         (,,uint256 maxSupply,) = eventContract.tickets("VIP");
@@ -165,6 +186,7 @@ contract EventContractTest is Test {
     }
 
     function testAddEventOwner() public {
+        // Vendor adds an additional event owner
         vm.startPrank(vendor);
         eventContract.addEventOwner(address(0x6));
         assertTrue(eventContract.additionalEventOwners(address(0x6)));
@@ -172,6 +194,7 @@ contract EventContractTest is Test {
     }
 
     function testRemoveEventOwner() public {
+        // Vendor removes an additional event owner
         vm.startPrank(vendor);
         eventContract.addEventOwner(address(0x6));
         eventContract.removeEventOwner(address(0x6));
@@ -180,6 +203,7 @@ contract EventContractTest is Test {
     }
 
     function testPauseAndUnpause() public {
+        // Master owner pauses and unpauses the event
         vm.startPrank(masterOwner);
         eventContract.pause();
         assertTrue(eventContract.paused());
