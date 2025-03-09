@@ -208,16 +208,24 @@ contract EventContract is ERC721Enumerable, Pausable {
         totalRevenue = 0;
     }
 
+    // Define the totalSupply function if not already defined
+    function _totalSupply() public view returns (uint256) {
+        return totalSupply();
+    }
+
     /**
      * @dev Function to cancel the event and refund all ticket holders.
      * @param reason The reason for cancelling the event.
      */
-    function cancelEvent(string calldata reason) external onlyVendorOrOwner {
+    function cancelEventAndAutoRefund(string calldata reason) external onlyVendorOrOwner {
+        require(!isCancelled, "Event already cancelled");
         isCancelled = true;
         emit EventCancelled(reason);
         // Refund all ticket holders
         uint256 totalSupply = totalSupply();
-        for (uint256 i = 0; i < totalSupply; i++) {
+        uint256 i = 0;
+        while (i < totalSupply) {
+            
             uint256 tokenId = tokenByIndex(i);
             address ticketOwner = ownerOf(tokenId);
             string memory ticketType = ticketTypesById[tokenId];
@@ -226,9 +234,19 @@ contract EventContract is ERC721Enumerable, Pausable {
             _burn(tokenId);
             require(usdcToken.transfer(ticketOwner, refundAmount), "Refund failed");
             emit TicketRefunded(ticketOwner, tokenId, refundAmount);
+
+            // Update total supply after burning the token
+            totalSupply = _totalSupply();
         }
 
         totalRevenue = 0;
+    }
+
+    function cancelEventOnly(string calldata reason) external onlyVendorOrOwner {
+        require(!isCancelled, "Event already cancelled");
+        isCancelled = true;
+        emit EventCancelled(reason);
+
     }
 
     /**

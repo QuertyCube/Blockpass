@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import "../src/EventContract.sol";
+import "forge-std/console.sol";
 import "../src/MockERC20.sol";
 import "../src/MasterOwnerModifier.sol";
 
@@ -26,14 +27,14 @@ contract EventContractTest is Test {
         tickets[0] = EventContract.Ticket({
             ticketType: "VIP",
             price: 100 * 10**6, // 100 USDC
-            maxSupply: 100,
+            maxSupply: 1000,
             minted: 0
         });
 
         tickets[1] = EventContract.Ticket({
             ticketType: "REG",
             price: 100 * 10**6, // 100 USDC
-            maxSupply: 100,
+            maxSupply: 3000,
             minted: 0
         });
 
@@ -46,15 +47,15 @@ contract EventContractTest is Test {
             address(masterOwnerModifier),
             "Test Event",
             "TEVT",
-            block.timestamp + 1 days,
-            block.timestamp + 2 days,
-            block.timestamp,
-            block.timestamp + 1 days,
+            block.timestamp + 2 days,           // Start timestamp of the event.
+            block.timestamp + 3 days,           // End timestamp of the event.
+            block.timestamp,                    // Sale Start timestamp of the ticket sale.
+            block.timestamp + 1 days,           // Sale End timestamp of the ticket sale.
             tickets
         );
 
-        // Mint 1000 USDC to user
-        usdcToken.mint(user, 1000 * 10**6);
+        // Mint 10000000 USDC to user
+        usdcToken.mint(user, 100000000000 * 10**6);
     }
 
     function testMintTicketHappyFlow() public {
@@ -74,7 +75,7 @@ contract EventContractTest is Test {
         vm.stopPrank();
 
         // Move time forward to after event end
-        vm.warp(block.timestamp + 2 days);
+        vm.warp(block.timestamp + 4 days);
         // Vendor withdraws funds
         vm.startPrank(vendor);
         eventContract.withdrawFunds();
@@ -107,7 +108,7 @@ contract EventContractTest is Test {
         vm.stopPrank();
     }
 
-    function testCancelEvent() public {
+    function testCancelEventAutoRefund_And_CheckUserBalance() public {
         // User mints a VIP ticket
         vm.startPrank(user);
         usdcToken.approve(address(eventContract), 100 * 10**6);
@@ -116,28 +117,44 @@ contract EventContractTest is Test {
 
         // Vendor cancels the event
         vm.startPrank(vendor);
-        eventContract.cancelEvent("Event cancelled");
+        eventContract.cancelEventAndAutoRefund("Event cancelled");
         assertTrue(eventContract.isCancelled());
         vm.stopPrank();
+
+        // Check user balance
+        vm.prank(user);
+        assertEq(usdcToken.balanceOf(user), 100000000000 * 10**6); // User gets refund
     }
 
     function testClaimRefund() public {
         // User mints a VIP ticket
-        vm.startPrank(user);
-        usdcToken.approve(address(eventContract), 100 * 10**6);
-        eventContract.mintTicket("VIP");
-        vm.stopPrank();
+        // for(uint i = 0; i < 1000; i++) {
+            vm.startPrank(user);
+            usdcToken.approve(address(eventContract), 100 * 10**6);
+            eventContract.mintTicket("VIP");
+            vm.stopPrank();
+        // }
+        // for(uint i = 0; i < 3000; i++) {
+        //     vm.startPrank(user);
+        //     usdcToken.approve(address(eventContract), 100 * 10**6);
+        //     eventContract.mintTicket("REG");
+        //     vm.stopPrank();
+        // }
+
+        // Check total supply of tickets
+        assertEq(eventContract.totalSupply(), 1);
+
 
         // Vendor cancels the event
-        vm.startPrank(vendor);
-        eventContract.cancelEvent("Event cancelled");
-        vm.stopPrank();
+        vm.prank(vendor);
+        eventContract.cancelEventOnly("Event cancelled");
 
-        // User claims refund
+        // // Check user balance
         vm.startPrank(user);
         eventContract.claimRefund(1);
-        assertEq(usdcToken.balanceOf(user), 1000 * 10**6); // User gets refund
+        assertEq(usdcToken.balanceOf(user), 100000000000 * 10**6); // User gets refund
         vm.stopPrank();
+
     }
 
     function testGetUserTickets() public {
