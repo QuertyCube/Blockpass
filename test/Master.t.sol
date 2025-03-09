@@ -15,6 +15,7 @@ contract MasterContractTest is Test {
     TreasuryFund public treasury;
     
     address public owner = address(0x1);
+    address public owner2 = address(0x1);
     address public vendor = address(0x2);
     address public nonOwner = address(0x3);
 
@@ -32,8 +33,8 @@ contract MasterContractTest is Test {
         // Deploy MasterContract
         masterContract = new MasterContract(address(treasury), address(ownerModifier));
 
-        // Add owner to Owner Modifier contract
-        ownerModifier.addMasterOwner(owner);
+        // // Add owner to Owner Modifier contract
+        // ownerModifier.addMasterOwner(owner);
         vm.stopPrank();
     }
 
