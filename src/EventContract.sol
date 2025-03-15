@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.23;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -51,19 +51,22 @@ contract EventContract is ERC721Enumerable, Pausable {
     error EventNotOver();
     error NoFundsAvailable();
     error InvalidAddress();
+    error NotEventOwner();
+    error NotMasterOwner();
+    error NotMasterOrEventOwner();
 
     modifier onlyEventOwner() {
-        require(msg.sender == eventOwner || additionalEventOwners[msg.sender], "Not event owner");
+        if (msg.sender != eventOwner && !additionalEventOwners[msg.sender]) revert NotEventOwner();
         _;
     }
 
     modifier onlyMasterOwner() {
-        require(masterOwnerModifier.isMasterOwner(msg.sender), "Caller is not an owner");
+        if (!masterOwnerModifier.isMasterOwner(msg.sender)) revert NotMasterOwner();
         _;
     }
 
     modifier onlyVendorOrOwner() {
-        require(msg.sender == eventOwner || masterOwnerModifier.isMasterOwner(msg.sender), "Not vendor or owner");
+        if (msg.sender != eventOwner && !masterOwnerModifier.isMasterOwner(msg.sender)) revert NotMasterOrEventOwner();
         _;
     }
 
@@ -182,10 +185,10 @@ contract EventContract is ERC721Enumerable, Pausable {
      * @param _newMaxSupply The new max supply for the ticket type.
      */
     function modifyTicketMaxSupply(string calldata _ticketType, uint256 _newMaxSupply) external onlyEventOwner {
-        require(_newMaxSupply > 0, "Max supply must be greater than zero");
+        if (_newMaxSupply == 0) revert("Max supply must be greater than zero");
         Ticket storage ticket = tickets[_ticketType];
-        require(ticket.maxSupply > 0, "Ticket type does not exist");
-        require(_newMaxSupply >= ticket.minted, "New max supply cannot be less than minted tickets");
+        if (ticket.maxSupply == 0) revert("Ticket type does not exist");
+        if (_newMaxSupply < ticket.minted) revert("New max supply cannot be less than minted tickets");
 
         ticket.maxSupply = _newMaxSupply;
     }
@@ -201,8 +204,8 @@ contract EventContract is ERC721Enumerable, Pausable {
         uint256 treasuryAmount = totalRevenue / 100; // 1% for treasury
         uint256 vendorAmount = totalRevenue - treasuryAmount;
 
-        require(usdcToken.transfer(eventOwner, vendorAmount), "Vendor withdrawal failed");
-        require(usdcToken.transfer(treasuryContract, treasuryAmount), "Treasury transfer failed");
+        if (!usdcToken.transfer(eventOwner, vendorAmount)) revert PaymentFailed();
+        if (!usdcToken.transfer(treasuryContract, treasuryAmount)) revert PaymentFailed();
 
         emit FundsWithdrawn(eventOwner, vendorAmount, treasuryAmount);
         totalRevenue = 0;
@@ -218,7 +221,7 @@ contract EventContract is ERC721Enumerable, Pausable {
      * @param reason The reason for cancelling the event.
      */
     function cancelEventAndAutoRefund(string calldata reason) external onlyVendorOrOwner {
-        require(!isCancelled, "Event already cancelled");
+        if (isCancelled) revert EventNotCancel();
         isCancelled = true;
         emit EventCancelled(reason);
         // Refund all ticket holders
@@ -232,7 +235,7 @@ contract EventContract is ERC721Enumerable, Pausable {
             uint256 refundAmount = tickets[ticketType].price;
 
             _burn(tokenId);
-            require(usdcToken.transfer(ticketOwner, refundAmount), "Refund failed");
+            if (!usdcToken.transfer(ticketOwner, refundAmount)) revert PaymentFailed();
             emit TicketRefunded(ticketOwner, tokenId, refundAmount);
 
             // Update total supply after burning the token
@@ -243,7 +246,7 @@ contract EventContract is ERC721Enumerable, Pausable {
     }
 
     function cancelEventOnly(string calldata reason) external onlyVendorOrOwner {
-        require(!isCancelled, "Event already cancelled");
+        if (isCancelled) revert EventNotCancel();
         isCancelled = true;
         emit EventCancelled(reason);
 
@@ -260,12 +263,12 @@ contract EventContract is ERC721Enumerable, Pausable {
         string memory ticketType = ticketTypesById[_tokenId];
         uint256 refundAmount = tickets[ticketType].price;
 
-        // Attempt to transfer the refund amount before burning the token
-        bool refundSuccess = usdcToken.transfer(msg.sender, refundAmount);
-        require(refundSuccess, "Refund failed");
-
-        // Burn the token only if the refund was successful
+        // Burn the token
         _burn(_tokenId);
+
+        // Attempt to transfer the refund amount before burning the token
+        if (!usdcToken.transfer(msg.sender, refundAmount)) revert PaymentFailed();
+
         emit TicketRefunded(msg.sender, _tokenId, refundAmount);
     }
 
