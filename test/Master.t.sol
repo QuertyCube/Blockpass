@@ -31,7 +31,7 @@ contract MasterContractTest is Test {
         treasury = new TreasuryFund();
 
         // Deploy MasterContract
-        masterContract = new MasterContract(address(treasury), address(ownerModifier));
+        masterContract = new MasterContract(address(treasury),address(usdc), address(ownerModifier));
 
         // // Add owner to Owner Modifier contract
         // ownerModifier.addMasterOwner(owner);
@@ -50,8 +50,7 @@ contract MasterContractTest is Test {
             end: block.timestamp + 2 days,
             startSale: block.timestamp,
             endSale: block.timestamp + 1 days,
-            ticketInfos: tickets,
-            usdcToken: address(usdc)
+            ticketInfos: tickets
         });
 
         // Create event
@@ -75,8 +74,7 @@ contract MasterContractTest is Test {
             end: block.timestamp + 1 days, // Error: start > end
             startSale: block.timestamp,
             endSale: block.timestamp + 1 days,
-            ticketInfos: tickets,
-            usdcToken: address(usdc)
+            ticketInfos: tickets
         });
 
         vm.prank(owner);
@@ -95,8 +93,7 @@ contract MasterContractTest is Test {
             end: block.timestamp + 2 days,
             startSale: block.timestamp + 2 days, // Error: startSale > endSale
             endSale: block.timestamp + 1 days,
-            ticketInfos: tickets,
-            usdcToken: address(usdc)
+            ticketInfos: tickets
         });
 
         vm.prank(owner);
@@ -114,8 +111,7 @@ contract MasterContractTest is Test {
             end: block.timestamp + 2 days,
             startSale: block.timestamp,
             endSale: block.timestamp + 1 days,
-            ticketInfos: tickets, // Error: No ticket types
-            usdcToken: address(usdc)
+            ticketInfos: tickets // Error: No ticket types
         });
 
         vm.prank(owner);

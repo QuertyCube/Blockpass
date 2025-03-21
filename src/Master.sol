@@ -7,12 +7,20 @@ import "./MasterOwnerModifier.sol";
 contract MasterContract {
     address public owner;
     address public immutable treasuryContract;
+    address public immutable usdc_token;
     MasterOwnerModifier public immutable masterOwnerModifier;
 
     address[] public eventContracts;
 
     event EventCreated(address indexed eventAddress);
     event FundsWithdrawn(address indexed owner, uint256 amount);
+
+    constructor(address _treasuryContract, address _usdc_token,address _ownerModifierAddress) {
+        owner = msg.sender;
+        treasuryContract = _treasuryContract;
+        usdc_token = _usdc_token;
+        masterOwnerModifier = MasterOwnerModifier(_ownerModifierAddress);
+    }
 
     modifier onlyOwner() {
         require(masterOwnerModifier.isMasterOwner(msg.sender), "Caller is not an owner");
@@ -33,13 +41,6 @@ contract MasterContract {
         uint256 startSale;
         uint256 endSale;
         TicketInfo[] ticketInfos;
-        address usdcToken;
-    }
-
-    constructor(address _treasuryContract, address _ownerModifierAddress) {
-        owner = msg.sender;
-        treasuryContract = _treasuryContract;
-        masterOwnerModifier = MasterOwnerModifier(_ownerModifierAddress);
     }
 
     function addOwner(address _newOwner) external onlyOwner {
@@ -72,7 +73,7 @@ contract MasterContract {
         EventContract newEvent = new EventContract(
             msg.sender, // Vendor as eventOwner
             owner, // Main owner of the MasterContract
-            params.usdcToken,
+            usdc_token,
             treasuryContract,
             address(masterOwnerModifier), // Pass the ownerModifier address
             params.name,

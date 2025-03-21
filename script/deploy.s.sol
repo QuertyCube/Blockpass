@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.23;
+
+import {Script} from "forge-std/Script.sol";
+import {console} from "forge-std/console.sol";
+import {MasterOwnerModifier} from "../src/MasterOwnerModifier.sol";
+import {MasterContract} from "../src/Master.sol";
+import {TreasuryFund} from "../src/TreasuryFund.sol";
+import {MockERC20} from "../src/MockERC20.sol";
+
+contract DeployScript is Script {
+    function run() external {
+
+        address usdc_token_testnet_address = address(0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238); // USDC testnet address
+        address usdc_token_mainnet_address = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48); // USDC mainnet address
+
+        // Ambil private key dan RPC URL dari .env
+        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        string memory network = vm.envString("NETWORK");
+        string memory rpcUrl;
+
+        if (keccak256(bytes(network)) == keccak256(bytes("sepolia"))) {
+            rpcUrl = vm.envString("SEPOLIA_RPC_URL");
+            console.log(" Deploying to Sepolia...");
+        } else if (keccak256(bytes(network)) == keccak256(bytes("mainnet"))) {
+            rpcUrl = vm.envString("MAINNET_RPC_URL");
+            console.log(" Deploying to Ethereum Mainnet...");
+        } else {
+            revert(" Unsupported network! Use 'sepolia' or 'mainnet'.");
+        }
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        // Deploy MasterOwnerModifier
+        MasterOwnerModifier masterOwnerModifier = new MasterOwnerModifier();
+        console.log(" MasterOwnerModifier deployed at:", address(masterOwnerModifier));
+
+        // Deploy TreasuryFund
+        TreasuryFund treasuryFund = new TreasuryFund();
+        console.log("TreasuryFund deployed at:", address(treasuryFund));
+
+        // Deploy MasterContract
+        MasterContract masterContract = new MasterContract(
+            address(treasuryFund),
+            usdc_token_testnet_address,
+            address(masterOwnerModifier)
+        );
+        console.log("MasterContract deployed at:", address(masterContract));
+
+        vm.stopBroadcast();
+    }
+}
+/*
+forge script script/deploy.s.sol --rpc-url $(grep ${NETWORK}_RPC_URL .env | cut -d '=' -f2) --broadcast --private-key $DEPLOYER_PRIVATE_KEY
+
+
+*/
