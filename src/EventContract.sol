@@ -5,16 +5,16 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "./MasterOwnerModifier.sol";
+import "./EventLibrary.sol";
 
 contract EventContract is ERC721Enumerable, Pausable {
     address public eventOwner;
-    address public masterOwner;
     address public treasuryContract;
     IERC20 public usdcToken;
     MasterOwnerModifier public masterOwnerModifier;
 
     string public eventName;
-    string[] public ticketTypes;
+    bytes32[] public ticketTypes;
 
     uint256 public eventStart;
     uint256 public eventEnd;
@@ -26,19 +26,19 @@ contract EventContract is ERC721Enumerable, Pausable {
     bool public isCancelled = false;
 
     struct Ticket {
-        string ticketType;
+        bytes32 ticketType;
         uint256 price;
         uint256 maxSupply;
         uint256 minted;
     }
 
-    mapping(string => Ticket) public tickets;
-    mapping(uint256 => string) public ticketTypesById;
+    mapping(bytes32 => Ticket) public tickets;
+    mapping(uint256 => bytes32) public ticketTypesById;
     mapping(address => bool) public additionalEventOwners;
 
     event EventCancelled(string reason);
     event FundsWithdrawn(address indexed vendor, uint256 vendorAmount, uint256 treasuryAmount);
-    event TicketMinted(address indexed buyer, string ticketType, uint256 tokenId);
+    event TicketMinted(address indexed buyer, bytes32 ticketType, uint256 tokenId);
     event TicketRefunded(address indexed buyer, uint256 tokenId, uint256 amount);
     event TicketTransferred(address indexed from, address indexed to, uint256 tokenId);
     event TicketUsed(uint256 tokenId);
@@ -73,7 +73,6 @@ contract EventContract is ERC721Enumerable, Pausable {
     /**
      * @dev Constructor to initialize the contract.
      * @param _vendor Address of the event vendor.
-     * @param _masterOwner Address of the master owner.
      * @param _usdcToken Address of the USDC token contract.
      * @param _treasuryContract Address of the treasury contract.
      * @param _name Name of the event.
@@ -82,36 +81,39 @@ contract EventContract is ERC721Enumerable, Pausable {
      * @param _end End timestamp of the event.
      * @param _startSale Start timestamp of the ticket sale.
      * @param _endSale End timestamp of the ticket sale.
-     * @param _tickets Array of Ticket structs containing ticket details.
+     * @param _ticketInfos Array of Ticket structs containing ticket details.
      */
     constructor(
         address _vendor,
-        address _masterOwner,
         address _usdcToken,
         address _treasuryContract,
         address _ownerModifierAddress,
-        string memory _name,
-        string memory _nftSymbol,
+        bytes32 _name,
+        bytes32 _nftSymbol,
         uint256 _start,
         uint256 _end,
         uint256 _startSale,
         uint256 _endSale,
-        Ticket[] memory _tickets
-    ) ERC721(_name, _nftSymbol) {
+        EventLibrary.TicketInfo[] memory _ticketInfos
+    ) ERC721(string(abi.encodePacked(_name)), string(abi.encodePacked(_nftSymbol))) {
         eventOwner = _vendor;
-        masterOwner = _masterOwner;
         usdcToken = IERC20(_usdcToken);
         treasuryContract = _treasuryContract;
         masterOwnerModifier = MasterOwnerModifier(_ownerModifierAddress);
-        eventName = _name;
+        eventName = string(abi.encodePacked(_name));
         eventStart = _start;
         eventEnd = _end;
         eventTiketStartSale = _startSale;
         eventTiketEndSale = _endSale;
 
-        for (uint256 i = 0; i < _tickets.length; i++) {
-            tickets[_tickets[i].ticketType] = _tickets[i];
-            ticketTypes.push(_tickets[i].ticketType);
+        for (uint256 i = 0; i < _ticketInfos.length; i++) {
+            tickets[_ticketInfos[i].ticketType] = Ticket({
+                ticketType: _ticketInfos[i].ticketType,
+                price: _ticketInfos[i].price,
+                maxSupply: _ticketInfos[i].maxSupply,
+                minted: 0
+            });
+            ticketTypes.push(_ticketInfos[i].ticketType);
         }
     }
 
@@ -119,7 +121,7 @@ contract EventContract is ERC721Enumerable, Pausable {
      * @dev Function to mint a new ticket.
      * @param _ticketType The type of the ticket to be minted.
      */
-    function mintTicket(string calldata _ticketType) external whenNotPaused {
+    function mintTicket(bytes32 _ticketType) external whenNotPaused {
         if (isCancelled) revert EventNotCancel();
         if (block.timestamp < eventTiketStartSale || block.timestamp > eventTiketEndSale) revert TicketSaleNotActive();
     
@@ -142,10 +144,10 @@ contract EventContract is ERC721Enumerable, Pausable {
      * @return ticketIds Array of ticket IDs owned by the user.
      * @return ticketTypesArray Array of ticket types owned by the user.
      */
-    function getUserTickets(address _user) external view returns (uint256[] memory, string[] memory) {
+    function getUserTickets(address _user) external view returns (uint256[] memory, bytes32[] memory) {
         uint256 balance = balanceOf(_user);
         uint256[] memory ticketIds = new uint256[](balance);
-        string[] memory ticketTypesArray = new string[](balance);
+        bytes32[] memory ticketTypesArray = new bytes32[](balance);
 
         for (uint256 i = 0; i < balance; i++) {
             uint256 tokenId = tokenOfOwnerByIndex(_user, i);
@@ -184,7 +186,7 @@ contract EventContract is ERC721Enumerable, Pausable {
      * @param _ticketType The type of the ticket to be modified.
      * @param _newMaxSupply The new max supply for the ticket type.
      */
-    function modifyTicketMaxSupply(string calldata _ticketType, uint256 _newMaxSupply) external onlyEventOwner {
+    function modifyTicketMaxSupply(bytes32 _ticketType, uint256 _newMaxSupply) external onlyEventOwner {
         if (_newMaxSupply == 0) revert("Max supply must be greater than zero");
         Ticket storage ticket = tickets[_ticketType];
         if (ticket.maxSupply == 0) revert("Ticket type does not exist");
@@ -231,7 +233,7 @@ contract EventContract is ERC721Enumerable, Pausable {
             
             uint256 tokenId = tokenByIndex(i);
             address ticketOwner = ownerOf(tokenId);
-            string memory ticketType = ticketTypesById[tokenId];
+            bytes32 ticketType = ticketTypesById[tokenId];
             uint256 refundAmount = tickets[ticketType].price;
 
             _burn(tokenId);
@@ -260,7 +262,7 @@ contract EventContract is ERC721Enumerable, Pausable {
         if (!isCancelled) revert EventNotCancel();
         if (ownerOf(_tokenId) != msg.sender) revert NotTicketOwner();
 
-        string memory ticketType = ticketTypesById[_tokenId];
+        bytes32 ticketType = ticketTypesById[_tokenId];
         uint256 refundAmount = tickets[ticketType].price;
 
         // Burn the token
