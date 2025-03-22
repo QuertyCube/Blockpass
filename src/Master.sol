@@ -74,4 +74,14 @@ contract MasterContract {
         require(success, "Transfer failed");
         emit FundsWithdrawn(treasuryContract, amount);
     }
+
+    /// @notice Returns all event contracts created
+    /// @return An array of addresses of all event contracts
+    function getAllEvents() external view returns (address[] memory) {
+        address[] memory events = new address[](eventCount);
+        for (uint256 i = 0; i < eventCount; i++) {
+            events[i] = eventContracts[i];
+        }
+        return events;
+    }
 }
