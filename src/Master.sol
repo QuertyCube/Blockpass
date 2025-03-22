@@ -3,7 +3,7 @@ pragma solidity ^0.8.23;
 
 import "./EventContract.sol";
 import "./MasterOwnerModifier.sol";
-import "./EventLibrary.sol";
+
 
 contract MasterContract {
     address public immutable treasuryContract;
@@ -33,25 +33,28 @@ contract MasterContract {
     }
 
     /// @notice Creates a new event contract
-    /// @param params The parameters for the new event
     /// @return The address of the newly created event contract
-    function createEvent(EventLibrary.EventParams calldata params) external returns (address) {
-        if (params.start >= params.end) revert InvalidEventTiming();
-        if (params.startSale >= params.endSale) revert InvalidSaleTiming();
-        if (params.ticketInfos.length == 0) revert InvalidTicketData();
+    function createEvent(        bytes32 name,
+        bytes32 nftSymbol,
+        uint256 start,
+        uint256 end,
+        uint256 startSale,
+        uint256 endSale
+        ) external returns (address) {
+        if (start >= end) revert InvalidEventTiming();
+        if (startSale >= endSale) revert InvalidSaleTiming();
 
         EventContract newEvent = new EventContract(
             msg.sender, // Vendor as eventOwner
             usdc_token,
             treasuryContract,
             address(masterOwnerModifier), // Pass the ownerModifier address
-            params.name,
-            params.nftSymbol,
-            params.start,
-            params.end,
-            params.startSale,
-            params.endSale,
-            params.ticketInfos
+            name,
+            nftSymbol,
+            start,
+            end,
+            startSale,
+            endSale
         );
 
         eventContracts[eventCount] = address(newEvent);
