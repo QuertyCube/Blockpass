@@ -20,12 +20,14 @@ contract MasterContract {
     error InvalidSaleTiming();
     error InvalidTicketData();
     error NotOwner();
+    ITicketManager public immutable ticketManager;
 
-    constructor(address _treasuryContract, address _usdc_token, address _ownerModifierAddress) {
-        treasuryContract = _treasuryContract;
-        usdc_token = _usdc_token;
-        masterOwnerModifier = MasterOwnerModifier(_ownerModifierAddress);
-    }
+constructor(address _treasuryContract, address _usdc_token, address _ownerModifierAddress, address _ticketManager) {
+    treasuryContract = _treasuryContract;
+    usdc_token = _usdc_token;
+    masterOwnerModifier = MasterOwnerModifier(_ownerModifierAddress);
+    ticketManager = ITicketManager(_ticketManager); // Inisialisasi
+}
 
     modifier onlyOwner() {
         require(masterOwnerModifier.isMasterOwner(msg.sender), "Caller is not an owner");
@@ -34,7 +36,8 @@ contract MasterContract {
 
     /// @notice Creates a new event contract
     /// @return The address of the newly created event contract
-    function createEvent(        bytes32 name,
+    function createEvent(   
+        string memory name,
         bytes32 nftSymbol,
         uint256 start,
         uint256 end,
@@ -44,18 +47,20 @@ contract MasterContract {
         if (start >= end) revert InvalidEventTiming();
         if (startSale >= endSale) revert InvalidSaleTiming();
 
-        EventContract newEvent = new EventContract(
-            msg.sender, // Vendor as eventOwner
-            usdc_token,
-            treasuryContract,
-            address(masterOwnerModifier), // Pass the ownerModifier address
-            name,
-            nftSymbol,
-            start,
-            end,
-            startSale,
-            endSale
-        );
+    EventContract newEvent = new EventContract(
+        msg.sender, // Vendor as eventOwner
+        usdc_token,
+        treasuryContract,
+        address(masterOwnerModifier),
+        ticketManager, // Tambahkan ini
+        name,
+        nftSymbol,
+        start,
+        end,
+        startSale,
+        endSale
+    );
+
 
         eventContracts[eventCount] = address(newEvent);
         unchecked { eventCount++; }
