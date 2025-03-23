@@ -3,13 +3,16 @@ pragma solidity ^0.8.23;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./MasterOwnerModifier.sol";
+
+interface IMasterOwnerModifier {
+    function isMasterOwner(address user) external view returns (bool);
+}
 
 contract EventContract is ERC721Enumerable {
     address public eventOwner;
     address public treasuryContract;
     IERC20 public usdcToken;
-    MasterOwnerModifier public masterOwnerModifier;
+    address public masterOwnerModifier;
 
     string public eventName;
     bytes32[] public ticketTypes;
@@ -58,12 +61,12 @@ contract EventContract is ERC721Enumerable {
     }
 
     modifier onlyMasterOwner() {
-        if (!masterOwnerModifier.isMasterOwner(msg.sender)) revert NotMasterOwner();
+        if (!IMasterOwnerModifier(masterOwnerModifier).isMasterOwner(msg.sender)) revert NotMasterOwner();
         _;
     }
 
     modifier onlyVendorOrOwner() {
-        if (msg.sender != eventOwner && !masterOwnerModifier.isMasterOwner(msg.sender)) revert NotMasterOrEventOwner();
+        if (msg.sender != eventOwner && !IMasterOwnerModifier(masterOwnerModifier).isMasterOwner(msg.sender)) 
         _;
     }
 
@@ -94,7 +97,7 @@ contract EventContract is ERC721Enumerable {
         eventOwner = _vendor;
         usdcToken = IERC20(_usdcToken);
         treasuryContract = _treasuryContract;
-        masterOwnerModifier = MasterOwnerModifier(_ownerModifierAddress);
+        masterOwnerModifier = _ownerModifierAddress;
         eventName = string(abi.encodePacked(_name));
         eventStart = _start;
         eventEnd = _end;

@@ -2,13 +2,13 @@
 pragma solidity ^0.8.23;
 
 import "./EventContract.sol";
-import "./MasterOwnerModifier.sol";
+
 
 
 contract MasterContract {
     address public immutable treasuryContract;
     address public immutable usdc_token;
-    MasterOwnerModifier public immutable masterOwnerModifier;
+    address public immutable masterOwnerModifier;
 
     mapping(uint256 => address) public eventContracts;
     uint256 public eventCount;
@@ -24,11 +24,11 @@ contract MasterContract {
     constructor(address _treasuryContract, address _usdc_token, address _ownerModifierAddress) {
         treasuryContract = _treasuryContract;
         usdc_token = _usdc_token;
-        masterOwnerModifier = MasterOwnerModifier(_ownerModifierAddress);
+        masterOwnerModifier = _ownerModifierAddress;
     }
 
     modifier onlyOwner() {
-        require(masterOwnerModifier.isMasterOwner(msg.sender), "Caller is not an owner");
+        require(IMasterOwnerModifier(masterOwnerModifier).isMasterOwner(msg.sender), "Caller is not an owner");
         _;
     }
 
