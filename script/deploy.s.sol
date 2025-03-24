@@ -11,13 +11,15 @@ import {MockERC20} from "../src/MockERC20.sol";
 contract DeployScript is Script {
     function run() external {
 
-        address eth_usdc_token_testnet_address = address(0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238); // USDC testnet address
-        address eth_usdc_token_mainnet_address = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48); // USDC mainnet address
-
+        // address eth_usdc_token_testnet_address = address(0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238); // USDC testnet address
+        // address eth_usdc_token_mainnet_address = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48); // USDC mainnet address
+        
         address base_usdc_token_testnet_address = address(0x036CbD53842c5426634e7929541eC2318f3dCF7e); // USDC testnet address
 
         // Ambil private key dan RPC URL dari .env
+        console.log("Deploying MasterContract...");
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        console.log("Deployer private key:", deployerPrivateKey);
         string memory chain = "BASE"; // BASE, BSC, POLYGON, etc
         string memory network = "SEPOLIA"; // SEPOLIA, MAINNET
         string memory rpcUrl;

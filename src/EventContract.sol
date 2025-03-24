@@ -66,9 +66,7 @@ contract EventContract is ERC721Enumerable {
     }
 
     modifier onlyVendorOrOwner() {
-        if (msg.sender != eventOwner && !IMasterOwnerModifier(masterOwnerModifier).isMasterOwner(msg.sender)) {
-            revert NotMasterOrEventOwner();
-        }
+        if (msg.sender != eventOwner && !IMasterOwnerModifier(masterOwnerModifier).isMasterOwner(msg.sender)) 
         _;
     }
 
@@ -110,10 +108,7 @@ contract EventContract is ERC721Enumerable {
 
     function addTickets(bytes32[] calldata _ticketTypes, uint256[] calldata _prices, uint256[] calldata _maxSupplies
     ) external onlyEventOwner {
-        for (uint256 i = 0; i < _ticketTypes.length; i++) {
-            require(_ticketTypes[i] != bytes32(0), "Ticket type cannot be empty");
-            require(_maxSupplies[i] > 0, "Max supply must be greater than zero");
-        }
+        require(_ticketTypes.length == _prices.length && _ticketTypes.length == _maxSupplies.length, "Invalid ticket data");
 
         for (uint256 i = 0; i < _ticketTypes.length; i++) {
             tickets[_ticketTypes[i]] = Ticket({
@@ -223,11 +218,11 @@ contract EventContract is ERC721Enumerable {
         require(!isCancelled, "Event already cancelled");
         isCancelled = true;
         emit EventCancelled(reason);
-       
         // Refund all ticket holders
         uint256 totalSupply = totalSupply();
         uint256 i = 0;
         while (i < totalSupply) {
+            
             uint256 tokenId = tokenByIndex(i);
             address ticketOwner = ownerOf(tokenId);
             bytes32 ticketType = ticketTypesById[tokenId];
