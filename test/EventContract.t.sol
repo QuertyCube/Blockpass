@@ -155,7 +155,7 @@ contract EventContractTest is Test {
         assertTrue(cancelled);
         vm.stopPrank();
 
-        // // Check user balance
+        // Check user balance
         vm.prank(user);
         uint256 userBalance = usdcToken.balanceOf(user);
         console.log("User balance after refund:", userBalance);

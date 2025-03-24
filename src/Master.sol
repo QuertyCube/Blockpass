@@ -3,8 +3,6 @@ pragma solidity ^0.8.23;
 
 import "./EventContract.sol";
 
-
-
 contract MasterContract {
     address public immutable treasuryContract;
     address public immutable usdc_token;
