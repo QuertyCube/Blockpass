@@ -22,22 +22,6 @@ contract EventContractTest is Test {
         masterOwnerModifier = new MasterOwnerModifier();
         masterOwnerModifier.addMasterOwner(masterOwner);
 
-        // Initialize tickets
-        // EventContract.Ticket[] memory tickets = new EventContract.Ticket[](2);
-        // tickets[0] = EventContract.Ticket({
-        //     ticketType: "VIP",
-        //     price: 100 * 10**6, // 100 USDC
-        //     maxSupply: 1000,
-        //     minted: 0
-        // });
-
-        // tickets[1] = EventContract.Ticket({
-        //     ticketType: "REG",
-        //     price: 100 * 10**6, // 100 USDC
-        //     maxSupply: 3000,
-        //     minted: 0
-        // });
-
         // Deploy EventContract
         vm.startPrank(vendor);
         eventContract = new EventContract(
@@ -121,24 +105,6 @@ contract EventContractTest is Test {
         eventContract.withdrawFunds();
         vm.stopPrank();
     }
-
-    // function testCancelEventAutoRefund_And_CheckUserBalance() public {
-    //     // User mints a VIP ticket
-    //     vm.startPrank(user);
-    //     usdcToken.approve(address(eventContract), 100 * 10**6);
-    //     eventContract.mintTicket("VIP");
-    //     vm.stopPrank();
-
-    //     // Vendor cancels the event
-    //     vm.startPrank(vendor);
-    //     eventContract.cancelEventAndAutoRefund("Event cancelled");
-    //     assertTrue(eventContract.isCancelled());
-    //     vm.stopPrank();
-
-    //     // Check user balance
-    //     vm.prank(user);
-    //     assertEq(usdcToken.balanceOf(user), 100000000000 * 10**6); // User gets refund
-    // }
 
     function testCancelEventAutoRefund_And_CheckUserBalance() public {
         // User mints a VIP ticket
