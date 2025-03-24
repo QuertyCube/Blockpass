@@ -23,22 +23,23 @@ contract EventContractTest is Test {
         masterOwnerModifier.addMasterOwner(masterOwner);
 
         // Initialize tickets
-        EventContract.Ticket[] memory tickets = new EventContract.Ticket[](2);
-        tickets[0] = EventContract.Ticket({
-            ticketType: "VIP",
-            price: 100 * 10**6, // 100 USDC
-            maxSupply: 1000,
-            minted: 0
-        });
+        // EventContract.Ticket[] memory tickets = new EventContract.Ticket[](2);
+        // tickets[0] = EventContract.Ticket({
+        //     ticketType: "VIP",
+        //     price: 100 * 10**6, // 100 USDC
+        //     maxSupply: 1000,
+        //     minted: 0
+        // });
 
-        tickets[1] = EventContract.Ticket({
-            ticketType: "REG",
-            price: 100 * 10**6, // 100 USDC
-            maxSupply: 3000,
-            minted: 0
-        });
+        // tickets[1] = EventContract.Ticket({
+        //     ticketType: "REG",
+        //     price: 100 * 10**6, // 100 USDC
+        //     maxSupply: 3000,
+        //     minted: 0
+        // });
 
         // Deploy EventContract
+        vm.startPrank(vendor);
         eventContract = new EventContract(
             vendor,
             address(usdcToken),
@@ -66,7 +67,7 @@ contract EventContractTest is Test {
         maxSupplies[1] = 3000;
 
         eventContract.addTickets(ticketTypes, prices, maxSupplies);
-
+        vm.stopPrank();
         // Mint 10000000 USDC to user
         usdcToken.mint(user, 100000000000 * 10**6);
     }
@@ -121,6 +122,24 @@ contract EventContractTest is Test {
         vm.stopPrank();
     }
 
+    // function testCancelEventAutoRefund_And_CheckUserBalance() public {
+    //     // User mints a VIP ticket
+    //     vm.startPrank(user);
+    //     usdcToken.approve(address(eventContract), 100 * 10**6);
+    //     eventContract.mintTicket("VIP");
+    //     vm.stopPrank();
+
+    //     // Vendor cancels the event
+    //     vm.startPrank(vendor);
+    //     eventContract.cancelEventAndAutoRefund("Event cancelled");
+    //     assertTrue(eventContract.isCancelled());
+    //     vm.stopPrank();
+
+    //     // Check user balance
+    //     vm.prank(user);
+    //     assertEq(usdcToken.balanceOf(user), 100000000000 * 10**6); // User gets refund
+    // }
+
     function testCancelEventAutoRefund_And_CheckUserBalance() public {
         // User mints a VIP ticket
         vm.startPrank(user);
@@ -131,12 +150,16 @@ contract EventContractTest is Test {
         // Vendor cancels the event
         vm.startPrank(vendor);
         eventContract.cancelEventAndAutoRefund("Event cancelled");
-        assertTrue(eventContract.isCancelled());
+        bool cancelled = eventContract.isCancelled();
+        console.log("Event cancelled?:", cancelled);
+        assertTrue(cancelled);
         vm.stopPrank();
 
-        // Check user balance
+        // // Check user balance
         vm.prank(user);
-        assertEq(usdcToken.balanceOf(user), 100000000000 * 10**6); // User gets refund
+        uint256 userBalance = usdcToken.balanceOf(user);
+        console.log("User balance after refund:", userBalance);
+        assertEq(userBalance, 100000000000 * 10**6); // User gets refund
     }
 
     // function testClaimRefund() public {

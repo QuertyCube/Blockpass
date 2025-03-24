@@ -74,7 +74,7 @@ contract MasterContractTest is Test {
 
     function test_CreateEvent_Fail_InvalidTiming() public {
         vm.prank(owner);
-        vm.expectRevert("Invalid event timing");
+        vm.expectRevert(MasterContract.InvalidEventTiming.selector);
         masterContract.createEvent(
         "Invalid Event",
         "INV",
@@ -87,7 +87,7 @@ contract MasterContractTest is Test {
 
     function test_CreateEvent_Fail_InvalidSaleTiming() public {
         vm.prank(owner);
-        vm.expectRevert("Invalid sale timing");
+        vm.expectRevert(MasterContract.InvalidSaleTiming.selector);
         masterContract.createEvent(
         "Invalid Sale Timing Event",
         "IST",
@@ -119,7 +119,7 @@ contract MasterContractTest is Test {
         uint256[] memory ticketSupplies = new uint256[](1);
 
         vm.prank(owner);
-        vm.expectRevert("Invalid ticket data");
+        vm.expectRevert("Ticket type cannot be empty");
         eventInstance.addTickets(ticketCategories , ticketPrices, ticketSupplies);
     }
 
