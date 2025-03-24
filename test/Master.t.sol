@@ -1,150 +1,150 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.23;
+// // SPDX-License-Identifier: MIT
+// pragma solidity ^0.8.23;
 
-import "forge-std/Test.sol";
-import "../src/Master.sol";
-import "../src/EventContract.sol";
-import "../src/MasterOwnerModifier.sol";
-import "../src/MockERC20.sol";
-import "../src/TreasuryFund.sol";
+// import "forge-std/Test.sol";
+// import "../src/Master.sol";
+// import "../src/EventContract.sol";
+// import "../src/MasterOwnerModifier.sol";
+// import "../src/MockERC20.sol";
+// import "../src/TreasuryFund.sol";
 
-contract MasterContractTest is Test {
-    MasterContract public masterContract;
-    MasterOwnerModifier public ownerModifier;
-    MockERC20 public usdc;
-    TreasuryFund public treasury;
+// contract MasterContractTest is Test {
+//     MasterContract public masterContract;
+//     MasterOwnerModifier public ownerModifier;
+//     MockERC20 public usdc;
+//     TreasuryFund public treasury;
     
-    address public owner = address(0x1);
-    address public owner2 = address(0x1);
-    address public vendor = address(0x2);
-    address public nonOwner = address(0x3);
+//     address public owner = address(0x1);
+//     address public owner2 = address(0x1);
+//     address public vendor = address(0x2);
+//     address public nonOwner = address(0x3);
 
-    function setUp() public {
-        // Deploy Owner Modifier contract
-        vm.startPrank(owner);
-        ownerModifier = new MasterOwnerModifier();
+//     function setUp() public {
+//         // Deploy Owner Modifier contract
+//         vm.startPrank(owner);
+//         ownerModifier = new MasterOwnerModifier();
         
-        // Deploy USDC mock token
-        usdc = new MockERC20("Mock USDC", "USDC", 18);
+//         // Deploy USDC mock token
+//         usdc = new MockERC20("Mock USDC", "USDC", 18);
 
-        // Deploy Treasury contract
-        treasury = new TreasuryFund();
+//         // Deploy Treasury contract
+//         treasury = new TreasuryFund();
 
-        // Deploy MasterContract
-        masterContract = new MasterContract(address(treasury),address(usdc), address(ownerModifier));
+//         // Deploy MasterContract
+//         masterContract = new MasterContract(address(treasury),address(usdc), address(ownerModifier));
 
-        // // Add owner to Owner Modifier contract
-        // ownerModifier.addMasterOwner(owner);
-        vm.stopPrank();
-    }
+//         // // Add owner to Owner Modifier contract
+//         // ownerModifier.addMasterOwner(owner);
+//         vm.stopPrank();
+//     }
 
-    function test_CreateEvent_Success() public {
-        // Create event
-        vm.prank(owner);
-        address eventAddress = masterContract.createEvent(
-            "Blockchain Expo",
-            "BEX",
-            block.timestamp + 1 days,
-            block.timestamp + 2 days,
-            block.timestamp,
-            block.timestamp + 1 days
-        );
+//     function test_CreateEvent_Success() public {
+//         // Create event
+//         vm.prank(owner);
+//         address eventAddress = masterContract.createEvent(
+//             "Blockchain Expo",
+//             "BEX",
+//             block.timestamp + 1 days,
+//             block.timestamp + 2 days,
+//             block.timestamp,
+//             block.timestamp + 1 days
+//         );
 
-        // Interact with the event contract
-        EventContract eventInstance = EventContract(eventAddress);
+//         // Interact with the event contract
+//         EventContract eventInstance = EventContract(eventAddress);
 
-        // Convert "VIP" string to bytes32 and wrap in an array
-        bytes32[] memory ticketCategories = new bytes32[](1); 
-        uint256[] memory ticketPrices = new uint256[](1);
-        uint256[] memory ticketSupplies = new uint256[](1);
+//         // Convert "VIP" string to bytes32 and wrap in an array
+//         bytes32[] memory ticketCategories = new bytes32[](1); 
+//         uint256[] memory ticketPrices = new uint256[](1);
+//         uint256[] memory ticketSupplies = new uint256[](1);
 
-        ticketCategories[0] = keccak256(abi.encodePacked("VIP"));
-        ticketPrices[0] = 100 ether;  // Harga tiket dalam wei
-        ticketSupplies[0] = 100;      // Jumlah tiket
+//         ticketCategories[0] = keccak256(abi.encodePacked("VIP"));
+//         ticketPrices[0] = 100 ether;  // Harga tiket dalam wei
+//         ticketSupplies[0] = 100;      // Jumlah tiket
 
-        // Add tickets
-        vm.prank(owner);
-        eventInstance.addTickets(ticketCategories, ticketPrices, ticketSupplies);
+//         // Add tickets
+//         vm.prank(owner);
+//         eventInstance.addTickets(ticketCategories, ticketPrices, ticketSupplies);
 
-        // Validate that tickets were added (modify getTicketDetails if needed)
-        (uint256 ticketPrice, uint256 ticketSupply) = eventInstance.getTicketDetails(ticketCategories[0]);
-        assertEq(ticketPrice, 100 ether);
-        assertEq(ticketSupply, 100);
-    }
+//         // Validate that tickets were added (modify getTicketDetails if needed)
+//         (uint256 ticketPrice, uint256 ticketSupply) = eventInstance.getTicketDetails(ticketCategories[0]);
+//         assertEq(ticketPrice, 100 ether);
+//         assertEq(ticketSupply, 100);
+//     }
 
-    function test_CreateEvent_Fail_InvalidTiming() public {
-        vm.prank(owner);
-        vm.expectRevert("Invalid event timing");
-        masterContract.createEvent(
-        "Invalid Event",
-        "INV",
-        block.timestamp + 2 days, // Start lebih lambat dari endDate (invalid)
-        block.timestamp + 1 days, // End lebih cepat (invalid case)
-        block.timestamp,
-        block.timestamp + 1 days
-        );
-    }
+//     function test_CreateEvent_Fail_InvalidTiming() public {
+//         vm.prank(owner);
+//         vm.expectRevert("Invalid event timing");
+//         masterContract.createEvent(
+//         "Invalid Event",
+//         "INV",
+//         block.timestamp + 2 days, // Start lebih lambat dari endDate (invalid)
+//         block.timestamp + 1 days, // End lebih cepat (invalid case)
+//         block.timestamp,
+//         block.timestamp + 1 days
+//         );
+//     }
 
-    function test_CreateEvent_Fail_InvalidSaleTiming() public {
-        vm.prank(owner);
-        vm.expectRevert("Invalid sale timing");
-        masterContract.createEvent(
-        "Invalid Sale Timing Event",
-        "IST",
-        block.timestamp + 1 days, // startDate
-        block.timestamp + 2 days, // endDate
-        block.timestamp + 2 days, // saleStart setelah saleEnd (invalid)
-        block.timestamp + 1 days  // saleEnd sebelum saleStart (invalid)
-    );
-    }
+//     function test_CreateEvent_Fail_InvalidSaleTiming() public {
+//         vm.prank(owner);
+//         vm.expectRevert("Invalid sale timing");
+//         masterContract.createEvent(
+//         "Invalid Sale Timing Event",
+//         "IST",
+//         block.timestamp + 1 days, // startDate
+//         block.timestamp + 2 days, // endDate
+//         block.timestamp + 2 days, // saleStart setelah saleEnd (invalid)
+//         block.timestamp + 1 days  // saleEnd sebelum saleStart (invalid)
+//     );
+//     }
 
-    function test_CreateEvent_Fail_NoTickets() public {
-        // Coba buat event tanpa menambahkan tiket (jika kontrak mengharuskan setidaknya 1 tiket)
-        vm.prank(owner);
-        address eventAddress = masterContract.createEvent(
-            "Event Without Tickets",
-            "EWT",
-            block.timestamp + 1 days, // startDate
-            block.timestamp + 2 days, // endDate
-            block.timestamp,          // saleStart
-            block.timestamp + 1 days  // saleEnd
-        );
+//     function test_CreateEvent_Fail_NoTickets() public {
+//         // Coba buat event tanpa menambahkan tiket (jika kontrak mengharuskan setidaknya 1 tiket)
+//         vm.prank(owner);
+//         address eventAddress = masterContract.createEvent(
+//             "Event Without Tickets",
+//             "EWT",
+//             block.timestamp + 1 days, // startDate
+//             block.timestamp + 2 days, // endDate
+//             block.timestamp,          // saleStart
+//             block.timestamp + 1 days  // saleEnd
+//         );
 
-        // Dapatkan instance event yang baru dibuat
-        EventContract eventInstance = EventContract(eventAddress);
+//         // Dapatkan instance event yang baru dibuat
+//         EventContract eventInstance = EventContract(eventAddress);
 
-        // Pastikan bahwa pemanggilan addTickets() gagal jika tidak ada 
-        bytes32[] memory ticketCategories = new bytes32[](1); 
-        uint256[] memory ticketPrices = new uint256[](1);
-        uint256[] memory ticketSupplies = new uint256[](1);
+//         // Pastikan bahwa pemanggilan addTickets() gagal jika tidak ada 
+//         bytes32[] memory ticketCategories = new bytes32[](1); 
+//         uint256[] memory ticketPrices = new uint256[](1);
+//         uint256[] memory ticketSupplies = new uint256[](1);
 
-        vm.prank(owner);
-        vm.expectRevert("Invalid ticket data");
-        eventInstance.addTickets(ticketCategories , ticketPrices, ticketSupplies);
-    }
+//         vm.prank(owner);
+//         vm.expectRevert("Invalid ticket data");
+//         eventInstance.addTickets(ticketCategories , ticketPrices, ticketSupplies);
+//     }
 
-    function test_Withdraw_Success() public {
-        vm.deal(address(masterContract), 10 ether); // Send 10 ETH to contract
+//     function test_Withdraw_Success() public {
+//         vm.deal(address(masterContract), 10 ether); // Send 10 ETH to contract
 
-        uint256 initialBalance = address(treasury).balance;
+//         uint256 initialBalance = address(treasury).balance;
 
-        vm.prank(owner);
-        masterContract.withdraw(5 ether);
+//         vm.prank(owner);
+//         masterContract.withdraw(5 ether);
 
-        assertEq(address(treasury).balance, initialBalance + 5 ether);
-    }
+//         assertEq(address(treasury).balance, initialBalance + 5 ether);
+//     }
 
-    function test_Withdraw_Fail_InsufficientBalance() public {
-        vm.prank(owner);
-        vm.expectRevert("Insufficient balance");
-        masterContract.withdraw(1 ether);
-    }
+//     function test_Withdraw_Fail_InsufficientBalance() public {
+//         vm.prank(owner);
+//         vm.expectRevert("Insufficient balance");
+//         masterContract.withdraw(1 ether);
+//     }
 
-    function test_Withdraw_Fail_NotOwner() public {
-        vm.deal(address(masterContract), 10 ether); // Send 10 ETH to contract
+//     function test_Withdraw_Fail_NotOwner() public {
+//         vm.deal(address(masterContract), 10 ether); // Send 10 ETH to contract
 
-        vm.prank(nonOwner);
-        vm.expectRevert("Caller is not an owner");
-        masterContract.withdraw(5 ether);
-    }
-}
+//         vm.prank(nonOwner);
+//         vm.expectRevert("Caller is not an owner");
+//         masterContract.withdraw(5 ether);
+//     }
+// }

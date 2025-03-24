@@ -4,7 +4,6 @@ pragma solidity ^0.8.23;
 import "./EventContract.sol";
 
 
-
 contract MasterContract {
     address public immutable treasuryContract;
     address public immutable usdc_token;
@@ -15,7 +14,7 @@ contract MasterContract {
 
     event EventCreated(address indexed eventAddress);
     event FundsWithdrawn(address indexed owner, uint256 amount);
-    
+
     error InvalidEventTiming();
     error InvalidSaleTiming();
     error InvalidTicketData();
@@ -32,15 +31,15 @@ contract MasterContract {
         _;
     }
 
-    /// @notice Creates a new event contract
-    /// @return The address of the newly created event contract
-    function createEvent(        bytes32 name,
+    function createEvent(
+        bytes32 name,
         bytes32 nftSymbol,
         uint256 start,
         uint256 end,
         uint256 startSale,
-        uint256 endSale
-        ) external returns (address) {
+        uint256 endSale,
+        address ticketManager
+    ) external returns (address) {
         if (start >= end) revert InvalidEventTiming();
         if (startSale >= endSale) revert InvalidSaleTiming();
 
@@ -54,7 +53,8 @@ contract MasterContract {
             start,
             end,
             startSale,
-            endSale
+            endSale,
+            ticketManager
         );
 
         eventContracts[eventCount] = address(newEvent);
@@ -63,11 +63,8 @@ contract MasterContract {
         return address(newEvent);
     }
 
-    /// @notice Allows the contract to receive Ether
     receive() external payable {}
 
-    /// @notice Withdraws Ether from the contract to the treasury contract
-    /// @param amount The amount of Ether to withdraw
     function withdraw(uint256 amount) external onlyOwner {
         if (amount > address(this).balance) {revert("Insufficient balance");}
         (bool success, ) = treasuryContract.call{value: amount}("");
@@ -75,8 +72,6 @@ contract MasterContract {
         emit FundsWithdrawn(treasuryContract, amount);
     }
 
-    /// @notice Returns all event contracts created
-    /// @return An array of addresses of all event contracts
     function getAllEvents() external view returns (address[] memory) {
         address[] memory events = new address[](eventCount);
         for (uint256 i = 0; i < eventCount; i++) {
