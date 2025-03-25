@@ -27,33 +27,38 @@ contract EventContract is ERC721Enumerable {
     bool public isCancelled = false;
 
     struct Ticket {
-        bytes32 ticketType;
+        string ticketType;
         uint256 price;
         uint256 maxSupply;
         uint256 minted;
     }
 
-    mapping(bytes32 => Ticket) public tickets;
-    mapping(uint256 => bytes32) public ticketTypesById;
+    mapping(string => Ticket) public tickets;
+    mapping(uint256 => string) public ticketTypesById;
     mapping(address => bool) public additionalEventOwners;
 
     event EventCancelled(string reason);
     event FundsWithdrawn(address indexed vendor, uint256 vendorAmount, uint256 treasuryAmount);
-    event TicketMinted(address indexed buyer, bytes32 ticketType, uint256 tokenId);
+    event TicketMinted(address indexed buyer, string ticketType, uint256 tokenId);
     event TicketRefunded(address indexed buyer, uint256 tokenId, uint256 amount);
     event TicketUsed(uint256 tokenId);
 
+    error EventAlreadyCancelled();
     error EventNotCancel();
-    error TicketSoldOut();
-    error TicketSaleNotActive();
-    error PaymentFailed();
-    error NotTicketOwner();
     error EventNotOver();
-    error NoFundsAvailable();
     error InvalidAddress();
+    error InvalidSupply();
+    error InvalidTicketType();
+    error NoFundsAvailable();
     error NotEventOwner();
-    error NotMasterOwner();
     error NotMasterOrEventOwner();
+    error NotMasterOwner();
+    error NotTicketOwner();
+    error PaymentFailed();
+    error TicketSaleNotActive();
+    error TicketSoldOut();
+    error TicketTypeNotExists();
+    error InvalidSupplyAndMinted();
 
     modifier onlyEventOwner() {
         if (msg.sender != eventOwner && !additionalEventOwners[msg.sender]) revert NotEventOwner();
@@ -66,7 +71,7 @@ contract EventContract is ERC721Enumerable {
     }
 
     modifier onlyVendorOrOwner() {
-        if (msg.sender != eventOwner && !IMasterOwnerModifier(masterOwnerModifier).isMasterOwner(msg.sender)) 
+        if (msg.sender != eventOwner && !IMasterOwnerModifier(masterOwnerModifier).isMasterOwner(msg.sender)) revert NotMasterOrEventOwner(); 
         _;
     }
 
@@ -87,18 +92,18 @@ contract EventContract is ERC721Enumerable {
         address _usdcToken,
         address _treasuryContract,
         address _ownerModifierAddress,
-        bytes32 _name,
-        bytes32 _nftSymbol,
+        string memory _name,
+        string memory _nftSymbol,
         uint256 _start,
         uint256 _end,
         uint256 _startSale,
         uint256 _endSale
-    ) ERC721(string(abi.encodePacked(_name)), string(abi.encodePacked(_nftSymbol))) {
+    ) ERC721(_name, _nftSymbol) {
         eventOwner = _vendor;
         usdcToken = IERC20(_usdcToken);
         treasuryContract = _treasuryContract;
         masterOwnerModifier = _ownerModifierAddress;
-        eventName = string(abi.encodePacked(_name));
+        eventName = _name;
         eventStart = _start;
         eventEnd = _end;
         eventTiketStartSale = _startSale;
@@ -106,9 +111,12 @@ contract EventContract is ERC721Enumerable {
 
     }
 
-    function addTickets(bytes32[] calldata _ticketTypes, uint256[] calldata _prices, uint256[] calldata _maxSupplies
+    function addTickets(string[] calldata _ticketTypes, uint256[] calldata _prices, uint256[] calldata _maxSupplies
     ) external onlyEventOwner {
-        require(_ticketTypes.length == _prices.length && _ticketTypes.length == _maxSupplies.length, "Invalid ticket data");
+        for (uint256 i = 0; i < _maxSupplies.length; i++) {
+            if (keccak256(bytes(_ticketTypes[i])) == keccak256(bytes(""))) revert InvalidTicketType();
+            if (_maxSupplies[i] == 0) revert InvalidSupply();
+        }
 
         for (uint256 i = 0; i < _ticketTypes.length; i++) {
             tickets[_ticketTypes[i]] = Ticket({
@@ -117,7 +125,7 @@ contract EventContract is ERC721Enumerable {
                 maxSupply: _maxSupplies[i],
                 minted: 0
             });
-            ticketTypes.push(_ticketTypes[i]);
+            ticketTypes.push(bytes32(bytes(_ticketTypes[i])));
         }
     }
 
@@ -126,7 +134,7 @@ contract EventContract is ERC721Enumerable {
      * @dev Function to mint a new ticket.
      * @param _ticketType The type of the ticket to be minted.
      */
-    function mintTicket(bytes32 _ticketType) external {
+    function mintTicket(string calldata _ticketType) external {
         if (isCancelled) revert EventNotCancel();
         if (block.timestamp < eventTiketStartSale || block.timestamp > eventTiketEndSale) revert TicketSaleNotActive();
     
@@ -149,10 +157,10 @@ contract EventContract is ERC721Enumerable {
      * @return ticketIds Array of ticket IDs owned by the user.
      * @return ticketTypesArray Array of ticket types owned by the user.
      */
-    function getUserTickets(address _user) external view returns (uint256[] memory, bytes32[] memory) {
+    function getUserTickets(address _user) external view returns (uint256[] memory, string[] memory) {
         uint256 balance = balanceOf(_user);
         uint256[] memory ticketIds = new uint256[](balance);
-        bytes32[] memory ticketTypesArray = new bytes32[](balance);
+        string[] memory ticketTypesArray = new string[](balance);
 
         for (uint256 i = 0; i < balance; i++) {
             uint256 tokenId = tokenOfOwnerByIndex(_user, i);
@@ -178,11 +186,11 @@ contract EventContract is ERC721Enumerable {
      * @param _ticketType The type of the ticket to be modified.
      * @param _newMaxSupply The new max supply for the ticket type.
      */
-    function modifyTicketMaxSupply(bytes32 _ticketType, uint256 _newMaxSupply) external onlyEventOwner {
-        if (_newMaxSupply == 0) revert("Max supply must be greater than zero");
+    function modifyTicketMaxSupply(string memory _ticketType, uint256 _newMaxSupply) external onlyEventOwner {
+        if (_newMaxSupply == 0) revert InvalidSupply();
         Ticket storage ticket = tickets[_ticketType];
-        if (ticket.maxSupply == 0) revert("Ticket type does not exist");
-        if (_newMaxSupply < ticket.minted) revert("New max supply cannot be less than minted tickets");
+        if (ticket.maxSupply == 0) revert TicketTypeNotExists();
+        if (_newMaxSupply < ticket.minted) revert InvalidSupplyAndMinted();
 
         ticket.maxSupply = _newMaxSupply;
     }
@@ -215,7 +223,7 @@ contract EventContract is ERC721Enumerable {
      * @param reason The reason for cancelling the event.
      */
     function cancelEventAndAutoRefund(string calldata reason) external onlyVendorOrOwner {
-        require(!isCancelled, "Event already cancelled");
+        if (isCancelled) revert EventAlreadyCancelled();
         isCancelled = true;
         emit EventCancelled(reason);
         // Refund all ticket holders
@@ -225,7 +233,7 @@ contract EventContract is ERC721Enumerable {
             
             uint256 tokenId = tokenByIndex(i);
             address ticketOwner = ownerOf(tokenId);
-            bytes32 ticketType = ticketTypesById[tokenId];
+            string memory ticketType = ticketTypesById[tokenId];
             uint256 refundAmount = tickets[ticketType].price;
 
             _burn(tokenId);
@@ -240,7 +248,7 @@ contract EventContract is ERC721Enumerable {
     }
 
     
-    function getTicketDetails(bytes32 ticketType) public view returns (uint256 price, uint256 supply) {
+    function getTicketDetails(string memory ticketType) public view returns (uint256 price, uint256 supply) {
         return (tickets[ticketType].price, tickets[ticketType].maxSupply);
     }
 }

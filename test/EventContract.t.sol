@@ -38,7 +38,7 @@ contract EventContractTest is Test {
         );
 
         // Add tickets to event contract
-        bytes32[] memory ticketTypes = new bytes32[](2);
+        string[] memory ticketTypes = new string[](2);
         uint256[] memory prices = new uint256[](2);
         uint256[] memory maxSupplies = new uint256[](2);
 
@@ -106,6 +106,24 @@ contract EventContractTest is Test {
         vm.stopPrank();
     }
 
+    // function testCancelEventAutoRefund_And_CheckUserBalance() public {
+    //     // User mints a VIP ticket
+    //     vm.startPrank(user);
+    //     usdcToken.approve(address(eventContract), 100 * 10**6);
+    //     eventContract.mintTicket("VIP");
+    //     vm.stopPrank();
+
+    //     // Vendor cancels the event
+    //     vm.startPrank(vendor);
+    //     eventContract.cancelEventAndAutoRefund("Event cancelled");
+    //     assertTrue(eventContract.isCancelled());
+    //     vm.stopPrank();
+
+    //     // Check user balance
+    //     vm.prank(user);
+    //     assertEq(usdcToken.balanceOf(user), 100000000000 * 10**6); // User gets refund
+    // }
+
     function testCancelEventAutoRefund_And_CheckUserBalance() public {
         // User mints a VIP ticket
         vm.startPrank(user);
@@ -168,7 +186,7 @@ contract EventContractTest is Test {
         vm.stopPrank();
 
         // Get user tickets
-        (uint256[] memory ticketIds, bytes32[] memory ticketTypes) = eventContract.getUserTickets(user);
+        (uint256[] memory ticketIds, string[] memory ticketTypes) = eventContract.getUserTickets(user);
         assertEq(ticketIds.length, 2);
         assertEq(ticketTypes.length, 2);
         assertEq(ticketTypes[0], "VIP");

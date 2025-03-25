@@ -18,6 +18,8 @@ contract MasterContract {
     error InvalidSaleTiming();
     error InvalidTicketData();
     error NotOwner();
+    error InsufficientBalance();
+    error TransferFail();
 
     constructor(address _treasuryContract, address _usdc_token, address _ownerModifierAddress) {
         treasuryContract = _treasuryContract;
@@ -26,33 +28,34 @@ contract MasterContract {
     }
 
     modifier onlyOwner() {
-        require(IMasterOwnerModifier(masterOwnerModifier).isMasterOwner(msg.sender), "Caller is not an owner");
+        require(IMasterOwnerModifier(masterOwnerModifier).isMasterOwner(msg.sender), NotOwner());
         _;
     }
 
     /// @notice Creates a new event contract
     /// @return The address of the newly created event contract
-    function createEvent(        bytes32 name,
-        bytes32 nftSymbol,
-        uint256 start,
-        uint256 end,
-        uint256 startSale,
-        uint256 endSale
-        ) external returns (address) {
-        if (start >= end) revert InvalidEventTiming();
-        if (startSale >= endSale) revert InvalidSaleTiming();
+    function createEvent(
+        string memory _name,
+        string memory _nftSymbol,
+        uint256 _start,
+        uint256 _end,
+        uint256 _startSale,
+        uint256 _endSale
+    ) external returns (address) {
+        if (_start >= _end) revert InvalidEventTiming();
+        if (_startSale >= _endSale) revert InvalidSaleTiming();
 
         EventContract newEvent = new EventContract(
             msg.sender, // Vendor as eventOwner
             usdc_token,
             treasuryContract,
             address(masterOwnerModifier), // Pass the ownerModifier address
-            name,
-            nftSymbol,
-            start,
-            end,
-            startSale,
-            endSale
+            _name,
+            _nftSymbol,
+            _start,
+            _end,
+            _startSale,
+            _endSale
         );
 
         eventContracts[eventCount] = address(newEvent);
@@ -67,9 +70,9 @@ contract MasterContract {
     /// @notice Withdraws Ether from the contract to the treasury contract
     /// @param amount The amount of Ether to withdraw
     function withdraw(uint256 amount) external onlyOwner {
-        if (amount > address(this).balance) {revert("Insufficient balance");}
+        if (amount > address(this).balance) {revert InsufficientBalance();}
         (bool success, ) = treasuryContract.call{value: amount}("");
-        require(success, "Transfer failed");
+        if (!success) {revert TransferFail();}
         emit FundsWithdrawn(treasuryContract, amount);
     }
 

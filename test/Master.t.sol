@@ -54,11 +54,11 @@ contract MasterContractTest is Test {
         EventContract eventInstance = EventContract(eventAddress);
 
         // Convert "VIP" string to bytes32 and wrap in an array
-        bytes32[] memory ticketCategories = new bytes32[](1); 
+        string[] memory ticketCategories = new string[](1); 
         uint256[] memory ticketPrices = new uint256[](1);
         uint256[] memory ticketSupplies = new uint256[](1);
 
-        ticketCategories[0] = keccak256(abi.encodePacked("VIP"));
+        ticketCategories[0] = "VIP";
         ticketPrices[0] = 100 ether;  // Harga tiket dalam wei
         ticketSupplies[0] = 100;      // Jumlah tiket
 
@@ -114,12 +114,12 @@ contract MasterContractTest is Test {
         EventContract eventInstance = EventContract(eventAddress);
 
         // Pastikan bahwa pemanggilan addTickets() gagal jika tidak ada 
-        bytes32[] memory ticketCategories = new bytes32[](1); 
+        string[] memory ticketCategories = new string[](1); 
         uint256[] memory ticketPrices = new uint256[](1);
         uint256[] memory ticketSupplies = new uint256[](1);
 
         vm.prank(owner);
-        vm.expectRevert("Ticket type cannot be empty");
+        vm.expectRevert(EventContract.InvalidTicketType.selector);
         eventInstance.addTickets(ticketCategories , ticketPrices, ticketSupplies);
     }
 
@@ -136,7 +136,7 @@ contract MasterContractTest is Test {
 
     function test_Withdraw_Fail_InsufficientBalance() public {
         vm.prank(owner);
-        vm.expectRevert("Insufficient balance");
+        vm.expectRevert(MasterContract.InsufficientBalance.selector);
         masterContract.withdraw(1 ether);
     }
 
@@ -144,7 +144,7 @@ contract MasterContractTest is Test {
         vm.deal(address(masterContract), 10 ether); // Send 10 ETH to contract
 
         vm.prank(nonOwner);
-        vm.expectRevert("Caller is not an owner");
+        vm.expectRevert(MasterContract.NotOwner.selector);
         masterContract.withdraw(5 ether);
     }
 }
