@@ -7,6 +7,7 @@ import "../src/EventContract.sol";
 import "../src/MasterOwnerModifier.sol";
 import "../src/MockERC20.sol";
 import "../src/TreasuryFund.sol";
+import "forge-std/console.sol";
 
 contract MasterContractTest is Test {
     MasterContract public masterContract;
@@ -53,24 +54,25 @@ contract MasterContractTest is Test {
         // Interact with the event contract
         EventContract eventInstance = EventContract(eventAddress);
 
-        // Convert "VIP" string to bytes32 and wrap in an array
+        // Add tickets
         string[] memory ticketCategories = new string[](1); 
         uint256[] memory ticketPrices = new uint256[](1);
         uint256[] memory ticketSupplies = new uint256[](1);
 
         ticketCategories[0] = "VIP";
-        ticketPrices[0] = 100 ether;  // Harga tiket dalam wei
-        ticketSupplies[0] = 100;      // Jumlah tiket
+        ticketPrices[0] = 100 ether;  // Ticket price in wei
+        ticketSupplies[0] = 100;      // Ticket supply
 
-        // Add tickets
         vm.prank(owner);
         eventInstance.addTickets(ticketCategories, ticketPrices, ticketSupplies);
 
-        // Validate that tickets were added (modify getTicketDetails if needed)
-        (string[] memory tiketType, uint256[] memory ticketPrice, uint256[] memory ticketSupply) = eventInstance.getTicketDetails();
-        assertEq(tiketType[0], "VIP");
-        assertEq(ticketPrice[0], 100 ether);
-        assertEq(ticketSupply[0], 100);
+        // Validate that tickets were added
+        EventContract.Ticket[] memory tickets = eventInstance.getAllTickets();
+        console.log("tiket: ",tickets[0].ticketType);
+        assertEq(tickets.length, 1);
+        assertEq(tickets[0].ticketType, "VIP");
+        assertEq(tickets[0].price, 100 ether);
+        assertEq(tickets[0].maxSupply, 100);
     }
 
     function test_CreateEvent_Fail_InvalidTiming() public {

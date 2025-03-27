@@ -15,7 +15,7 @@ contract EventContract is ERC721Enumerable {
     address public masterOwnerModifier;
 
     string public eventName;
-    bytes32[] public ticketTypes;
+    string[] public ticketTypes; // Change ticketTypes to store strings directly
 
     uint256 public eventStart;
     uint256 public eventEnd;
@@ -59,6 +59,7 @@ contract EventContract is ERC721Enumerable {
     error TicketSoldOut();
     error TicketTypeNotExists();
     error InvalidSupplyAndMinted();
+    error ReturnFailed();
 
     modifier onlyEventOwner() {
         if (msg.sender != eventOwner && !additionalEventOwners[msg.sender]) revert NotEventOwner();
@@ -113,22 +114,47 @@ contract EventContract is ERC721Enumerable {
 
     function addTickets(string[] calldata _ticketTypes, uint256[] calldata _prices, uint256[] calldata _maxSupplies
     ) external onlyEventOwner {
-        for (uint256 i = 0; i < _maxSupplies.length; i++) {
-            if (keccak256(bytes(_ticketTypes[i])) == keccak256(bytes(""))) revert InvalidTicketType();
-            if (_maxSupplies[i] == 0) revert InvalidSupply();
-        }
-
         for (uint256 i = 0; i < _ticketTypes.length; i++) {
+            if (bytes(_ticketTypes[i]).length == 0) revert InvalidTicketType();
+            if (_maxSupplies[i] == 0) revert InvalidSupply();
+
             tickets[_ticketTypes[i]] = Ticket({
                 ticketType: _ticketTypes[i],
                 price: _prices[i],
                 maxSupply: _maxSupplies[i],
                 minted: 0
             });
-            ticketTypes.push(bytes32(bytes(_ticketTypes[i])));
+            ticketTypes.push(_ticketTypes[i]); // Store as string directly
         }
     }
 
+    function getAllTickets() public view returns (Ticket[] memory) {
+        uint256 length = ticketTypes.length;
+        Ticket[] memory allTickets = new Ticket[](length);
+
+        for (uint256 i = 0; i < length; i++) {
+            string memory ticketType = ticketTypes[i]; // Retrieve ticket type directly
+            Ticket storage ticket = tickets[ticketType];
+            if (bytes(ticket.ticketType).length == 0) revert TicketTypeNotExists(); // Revert if ticketType does not exist
+            allTickets[i] = ticket;
+        }
+
+        return allTickets;
+    }
+
+    function _decodeTicketType(bytes32 ticketHash) internal pure returns (string memory) {
+        return string(abi.decode(abi.encodePacked(ticketHash), (string)));
+    }
+
+    function _getTicketTypeFromHash(bytes32 ticketHash) internal view returns (string memory) {
+        for (uint256 i = 0; i < ticketTypes.length; i++) {
+            string memory ticketType = string(abi.encodePacked(ticketTypes[i]));
+            if (keccak256(bytes(ticketType)) == ticketHash) {
+                return ticketType;
+            }
+        }
+        revert TicketTypeNotExists();
+    }
 
     /**
      * @dev Function to mint a new ticket.
@@ -237,7 +263,7 @@ contract EventContract is ERC721Enumerable {
             uint256 refundAmount = tickets[ticketType].price;
 
             _burn(tokenId);
-            require(usdcToken.transfer(ticketOwner, refundAmount), "Refund failed");
+            if (!usdcToken.transfer(ticketOwner, refundAmount)) revert ReturnFailed();
             emit TicketRefunded(ticketOwner, tokenId, refundAmount);
 
             // Update total supply after burning the token
@@ -248,18 +274,4 @@ contract EventContract is ERC721Enumerable {
     }
 
     
-    function getTicketDetails() public view returns (string[] memory ticketTypeNames, uint256[] memory prices, uint256[] memory supplies) {
-        uint256 length = ticketTypes.length;
-        ticketTypeNames = new string[](length);
-        prices = new uint256[](length);
-        supplies = new uint256[](length);
-
-        for (uint256 i = 0; i < length; i++) {
-            string memory ticketType = string(abi.encodePacked(ticketTypes[i]));
-            Ticket storage ticket = tickets[ticketType];
-            ticketTypeNames[i] = ticket.ticketType;
-            prices[i] = ticket.price;
-            supplies[i] = ticket.maxSupply;
-        }
-    }
 }
