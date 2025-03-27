@@ -56,6 +56,7 @@ contract MasterContract {
             _end,
             _startSale,
             _endSale
+
         );
 
         eventContracts[eventCount] = address(newEvent);

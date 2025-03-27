@@ -67,9 +67,10 @@ contract MasterContractTest is Test {
         eventInstance.addTickets(ticketCategories, ticketPrices, ticketSupplies);
 
         // Validate that tickets were added (modify getTicketDetails if needed)
-        (uint256 ticketPrice, uint256 ticketSupply) = eventInstance.getTicketDetails(ticketCategories[0]);
-        assertEq(ticketPrice, 100 ether);
-        assertEq(ticketSupply, 100);
+        (string[] memory tiketType, uint256[] memory ticketPrice, uint256[] memory ticketSupply) = eventInstance.getTicketDetails();
+        assertEq(tiketType[0], "VIP");
+        assertEq(ticketPrice[0], 100 ether);
+        assertEq(ticketSupply[0], 100);
     }
 
     function test_CreateEvent_Fail_InvalidTiming() public {

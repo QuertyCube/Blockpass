@@ -52,7 +52,29 @@ contract DeployScript is Script {
         );
         console.log("MasterContract deployed at:", address(masterContract));
 
+        // Create an event using MasterContract
+        console.log("Creating an event...");
+        address eventAddress = masterContract.createEvent(
+            "Sample Event",       // Event name
+            "SEVT",               // NFT symbol
+            block.timestamp + 1 days, // Event start time
+            block.timestamp + 2 days, // Event end time
+            block.timestamp,          // Ticket sale start time
+            block.timestamp + 12 hours // Ticket sale end time
+        );
+        console.log("EventContract deployed at:", eventAddress);
+
         vm.stopBroadcast();
+
+        // Verify the deployed event contract
+        console.log("Verifying EventContract...");
+        string[] memory verifyArgs = new string[](4);
+        verifyArgs[0] = "forge";
+        verifyArgs[1] = "verify-contract";
+        verifyArgs[2] = vm.toString(eventAddress);
+        verifyArgs[3] = "src/EventContract.sol:EventContract";
+        vm.ffi(verifyArgs);
+        console.log("EventContract verified successfully.");
     }
 }
 /*

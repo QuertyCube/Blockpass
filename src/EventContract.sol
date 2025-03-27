@@ -248,7 +248,18 @@ contract EventContract is ERC721Enumerable {
     }
 
     
-    function getTicketDetails(string memory ticketType) public view returns (uint256 price, uint256 supply) {
-        return (tickets[ticketType].price, tickets[ticketType].maxSupply);
+    function getTicketDetails() public view returns (string[] memory ticketTypeNames, uint256[] memory prices, uint256[] memory supplies) {
+        uint256 length = ticketTypes.length;
+        ticketTypeNames = new string[](length);
+        prices = new uint256[](length);
+        supplies = new uint256[](length);
+
+        for (uint256 i = 0; i < length; i++) {
+            string memory ticketType = string(abi.encodePacked(ticketTypes[i]));
+            Ticket storage ticket = tickets[ticketType];
+            ticketTypeNames[i] = ticket.ticketType;
+            prices[i] = ticket.price;
+            supplies[i] = ticket.maxSupply;
+        }
     }
 }
